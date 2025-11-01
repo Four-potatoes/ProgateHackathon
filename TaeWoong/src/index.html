@@ -3,244 +3,588 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>K-Movie Memory Master</title>
-    <!-- Tailwind CSS CDN -->
+    <title>K-Everything Memory Game</title>
+    <link rel="icon" href="../favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration - 여기에 실제 Firebase 프로젝트 설정을 넣어주세요
+        const firebaseConfig = {
+            apiKey: "AIzaSyDEMOKEY123456789",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.firebaseAuth = getAuth(window.firebaseApp);
+        window.firebaseDb = getFirestore(window.firebaseApp);
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.firestoreDoc = doc;
+        window.firestoreSetDoc = setDoc;
+        window.firestoreGetDoc = getDoc;
+        window.firestoreUpdateDoc = updateDoc;
+    </script>
+
     <style>
-        /* Custom CSS for Card Flip Effect */
-        .perspective {
-            perspective: 1000px;
-        }
-        .transform-style-preserve-3d {
-            transform-style: preserve-3d;
-        }
-        .backface-hidden {
-            backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-            transform: rotateY(180deg);
-        }
-        .card-inner {
-            transition: transform 0.5s;
-        }
-        @keyframes pop-in {
+        /* 카드 플립 애니메이션 */
+        .perspective { perspective: 1000px; }
+        .transform-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .flip { transform: rotateY(180deg); }
+        .card-transition { transition: transform 0.6s; }
+
+        /* 팝업 애니메이션 */
+        @keyframes pop {
             0% { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .animate-pop-in {
-            animation: pop-in 0.3s ease-out forwards;
+        .pop-in { animation: pop 0.3s ease-out forwards; }
+
+        /* 잠금 효과 */
+        .locked { filter: grayscale(100%) brightness(0.6); pointer-events: none; }
+
+        /* 중앙 정렬 */
+        .text-center { text-align: center; }
+
+        /* 프로필 드롭다운 */
+        .profile-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            z-index: 50;
+        }
+        .profile-dropdown.show {
+            display: block;
+        }
+        .profile-image {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+        .profile-image:hover {
+            transform: scale(1.1);
         }
     </style>
-    <!-- Lucide Icons (Used for the UI/UX experience) -->
-    <script type="module">
-        // FIX: Import 'icons' and pass it to createIcons for it to work with all available icons.
-        import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
-        window.addEventListener('load', () => {
-            // Pass the icons object as required by the library to initialize all icons on the page.
-            createIcons({ icons });
-        });
-    </script>
 </head>
-<body class="min-h-screen font-sans bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50" id="body-container">
+<body class="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
 
     <div id="app" class="min-h-screen">
-        <!-- Content will be rendered here by JavaScript -->
+        <!-- 로딩 화면 -->
         <div class="flex flex-col justify-center items-center h-screen">
-            <svg data-lucide="loader-2" class="animate-spin text-indigo-500 w-12 h-12"></svg>
-            <p class="ml-4 mt-4 text-xl text-gray-700">K-Movie 데이터 로딩 중...</p>
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
+            <p class="mt-4 text-xl text-gray-700">로딩 중...</p>
         </div>
     </div>
 
-    <!-- Firebase and Application Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // ===================================
+        // 전역 상태
+        // ===================================
+        let STAGES_DATA = null;
+        let currentStage = 1;
+        let unlockedStages = [1];
+        let completedStages = []; // 완료된 스테이지
+        let playerName = '';
+        let playerNameSet = false;
 
-        // --- Firebase Initialization and Global Variables ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kmovie-memory-game';
+        // Google 사용자 정보
+        let currentUser = null;
+        let userProfile = {
+            uid: null,
+            email: null,
+            displayName: null,
+            photoURL: null
+        };
 
-        let app, db, auth;
-        let currentUserId = null;
-        let isAuthReady = false;
-
-        // K-Movie Card Data (8 pairs for a 4x4 grid)
-        const K_MOVIE_ITEMS = [
-            { name: '기생충', icon: '🎬', desc: '계급 간의 대립과 사회적 격차를 다룬 작품.', img: '기생충.jpg', genre: '범죄', director: '봉준호', actor: '송강호, 이선균, 조여정, 최우식, 박소담, 장혜진, 이정은' },
-            { name: '올드보이', icon: '🔨', desc: '15년간의 감금과 복수를 그린 스릴러.', img: '올드보이.jpg', genre: '복수극', director: '박찬욱', actor: '최민식, 유지태, 강혜정' },
-            { name: '부산행', icon: '🧟', desc: '좀비 바이러스로부터 살아남기 위한 사투.', img: '부산행.jpg', genre: '액션', director: '연상호', actor: '공유, 정유미, 마동석, 최우식, 안소희, 김의성, 김수안' },
-            { name: '더 파이브', icon: '🔍', desc: '5명의 범인을 추적하는 치밀한 스릴러.', img: '더파이브.jpg', genre: '스릴러', director: '정연식', actor: '김선아, 온주완, 마동석, 신정근, 정인기, 이청아, 박효주' },
-            { name: '명량', icon: '⚔️', desc: '이순신 장군의 명량대첩을 다룬 역사극.', img: '명량.jpg', genre: '사극', director: '김한민', actor: '최민식, 류승룡, 조진웅' },
-            { name: '범죄도시', icon: '👊', desc: '조직폭력배와 경찰의 대결을 그린 액션 영화.', img: '범죄도시.jpg', genre: '범죄', director: '강윤성', actor: '마동석, 김무열, 박지환, 이동휘' },
-            { name: '헤어질 결심', icon: '💔', desc: '형사와 용의자 사이의 비밀스러운 로맨스.', img: '헤어질결심.jpg', genre: '멜로', director: '박찬욱', actor: '탕웨이, 박해일' },
-            { name: '콘크리트 유토피아', icon: '🏢', desc: '대지진 이후 유일하게 남은 아파트의 생존기.', img: '콘크리트유토피아.jpg', genre: '재난', director: '엄태화', actor: '이병헌, 박서준, 박보영, 김선영, 박지후, 김도윤' },
-        ];
-
-        let CARD_PAIRS;
-        let totalPairs;
-
-        // --- Game State Management ---
+        // 게임 상태
         let cards = [];
         let flipped = [];
         let matched = [];
         let moves = 0;
         let isWon = false;
         let canClick = true;
-        let currentPage = 'game'; // 'game', 'collection', 'ai-learning', 'leaderboard'
-        
+        let currentPage = 'welcome'; // welcome, stages, game, collection, ranking
+
+        // 랭킹 데이터 (메모리)
+        let rankingData = [
+            { name: '김민수', stage: '영화', moves: 18 },
+            { name: '이서연', stage: '음식', moves: 22 },
+            { name: '박지훈', stage: '영화', moves: 25 },
+        ];
+
         const appContainer = document.getElementById('app');
 
-        // --- Utility Functions ---
-        const shuffleArray = (array) => {
-            let currentIndex = array.length, randomIndex;
-            while (currentIndex !== 0) {
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex--;
-                [array[currentIndex], array[randomIndex]] = [
-                    array[randomIndex], array[currentIndex]];
+        // ===================================
+        // 데이터 로드
+        // ===================================
+        async function loadData() {
+            try {
+                const response = await fetch('../data/stages.json');
+                STAGES_DATA = await response.json();
+
+                // 로컬스토리지에서 진행도 불러오기
+                const saved = localStorage.getItem('game_progress');
+                if (saved) {
+                    const progress = JSON.parse(saved);
+                    unlockedStages = progress.unlockedStages || [1];
+                    completedStages = progress.completedStages || [];
+                    currentStage = progress.currentStage || 1;
+                    playerName = progress.playerName || '';
+                    playerNameSet = progress.playerNameSet || false;
+                }
+
+                const savedRanking = localStorage.getItem('ranking_data');
+                if (savedRanking) {
+                    rankingData = JSON.parse(savedRanking);
+                }
+            } catch (error) {
+                console.error('데이터 로드 실패:', error);
             }
-            return array;
-        };
-
-        const goToPage = (pageName) => {
-            currentPage = pageName;
-            render();
-            // Re-run icon rendering for newly created DOM elements
-            // We use createIcons({ icons }) now, which is defined in the head script.
-            // Since we cannot directly access 'icons' here, we rely on the window.onload 
-            // script to handle the initial run. For subsequent renders, we just call 
-            // createIcons() without arguments which re-renders existing data-lucide elements.
-            // This is a common pattern when the icons object is globally available or handled
-            // by the initial setup. The error was in the head script itself, which is now fixed.
-            // We will remove the redundant check here since the head script handles the icon setup.
-            // However, the original code had this check, so we'll keep it for robustness if the new script
-            // is re-exported to window.createIcons
-            if (window.createIcons) window.createIcons({ icons: window.icons });
-        };
-
-        // --- Game Logic ---
-
-        const initializeCardData = () => {
-             CARD_PAIRS = [...K_MOVIE_ITEMS, ...K_MOVIE_ITEMS].map((item, index) => ({
-                ...item,
-                id: index,
-            }));
-            totalPairs = CARD_PAIRS.length / 2;
         }
 
-        const initializeGame = () => {
-            initializeCardData();
-            cards = shuffleArray([...CARD_PAIRS]);
+        // ===================================
+        // 저장 함수
+        // ===================================
+        const saveProgress = () => {
+            localStorage.setItem('game_progress', JSON.stringify({
+                unlockedStages,
+                completedStages,
+                currentStage,
+                playerName,
+                playerNameSet
+            }));
+
+            // Google 로그인 상태면 Firestore에도 저장
+            if (currentUser) {
+                saveUserData();
+            }
+        };
+
+        const saveRanking = () => {
+            localStorage.setItem('ranking_data', JSON.stringify(rankingData));
+        };
+
+        // ===================================
+        // Google 인증 함수
+        // ===================================
+        const signInWithGoogle = async () => {
+            try {
+                const provider = new window.GoogleAuthProvider();
+                const result = await window.signInWithPopup(window.firebaseAuth, provider);
+                currentUser = result.user;
+                userProfile = {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName,
+                    photoURL: currentUser.photoURL
+                };
+
+                // Firestore에서 사용자 데이터 로드
+                await loadUserData();
+
+                // 이름이 없으면 Google 이름 사용
+                if (!playerName && userProfile.displayName) {
+                    playerName = userProfile.displayName;
+                    playerNameSet = true;
+                    saveProgress();
+                }
+
+                render();
+            } catch (error) {
+                console.error('Google 로그인 실패:', error);
+                alert('로그인에 실패했습니다. 다시 시도해주세요.');
+            }
+        };
+
+        const signOutUser = async () => {
+            try {
+                await window.signOut(window.firebaseAuth);
+                currentUser = null;
+                userProfile = {
+                    uid: null,
+                    email: null,
+                    displayName: null,
+                    photoURL: null
+                };
+                render();
+            } catch (error) {
+                console.error('로그아웃 실패:', error);
+            }
+        };
+
+        const loadUserData = async () => {
+            if (!currentUser) return;
+
+            try {
+                const userDoc = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
+                const docSnap = await window.firestoreGetDoc(userDoc);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    unlockedStages = data.unlockedStages || [1];
+                    completedStages = data.completedStages || [];
+                    currentStage = data.currentStage || 1;
+                    playerName = data.playerName || userProfile.displayName;
+                    playerNameSet = data.playerNameSet || false;
+                } else {
+                    // 새 사용자 - 초기 데이터 저장
+                    await saveUserData();
+                }
+            } catch (error) {
+                console.error('사용자 데이터 로드 실패:', error);
+            }
+        };
+
+        const saveUserData = async () => {
+            if (!currentUser) return;
+
+            try {
+                const userDoc = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
+                await window.firestoreSetDoc(userDoc, {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName,
+                    photoURL: currentUser.photoURL,
+                    unlockedStages,
+                    completedStages,
+                    currentStage,
+                    playerName,
+                    playerNameSet,
+                    lastUpdated: new Date().toISOString()
+                }, { merge: true });
+            } catch (error) {
+                console.error('사용자 데이터 저장 실패:', error);
+            }
+        };
+
+        // ===================================
+        // 유틸리티 함수
+        // ===================================
+        const shuffleArray = (array) => {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        };
+
+        const goToPage = (page) => {
+            currentPage = page;
+            render();
+        };
+
+        const setPlayerName = (name) => {
+            playerName = name.trim() || '익명';
+            playerNameSet = true;
+            saveProgress();
+            goToPage('stages');
+        };
+
+        // ===================================
+        // 게임 로직
+        // ===================================
+        const initializeGame = (stageId) => {
+            currentStage = stageId;
+            const stage = STAGES_DATA.stages.find(s => s.id === stageId);
+            if (!stage) return;
+
+            const items = stage.items;
+            const pairs = [...items, ...items].map((item, index) => ({
+                ...item,
+                id: index,
+                pairId: item.idx
+            }));
+
+            cards = shuffleArray(pairs);
             flipped = [];
             matched = [];
             moves = 0;
             isWon = false;
             canClick = true;
+
+            currentPage = 'game';
             renderGame();
         };
-
-        const checkWinCondition = () => {
-            if (matched.length > 0 && matched.length === cards.length) {
-                isWon = true;
-                submitScore(moves);
-                renderGame(); // Re-render to show win modal
-            }
-        };
-
-        const submitScore = async (finalMoves) => {
-            if (!db || !currentUserId) {
-                console.error("Database or User ID not ready.");
-                return;
-            }
-            
-            const rankingCollectionPath = `artifacts/${appId}/public/data/kmovie_ranking`;
-            try {
-                await addDoc(collection(db, rankingCollectionPath), {
-                    playerUid: currentUserId,
-                    moves: finalMoves,
-                    timestamp: serverTimestamp(),
-                });
-                console.log("Score submitted successfully:", finalMoves);
-            } catch (error) {
-                console.error("Error submitting score:", error);
-            }
-        };
-
 
         const handleCardClick = (cardId) => {
             if (!canClick || flipped.length === 2 || flipped.includes(cardId) || matched.includes(cardId) || isWon) {
                 return;
             }
 
-            // Flip the card and update the state visually
             flipped.push(cardId);
-            renderGame(); 
-            
+            renderGame();
+
             if (flipped.length === 2) {
                 canClick = false;
                 moves++;
-                renderGame(); // Update moves count
-                
-                const [firstId, secondId] = flipped;
-                
-                const item1 = cards.find(c => c.id === firstId);
-                const item2 = cards.find(c => c.id === secondId);
+                renderGame();
 
-                if (item1 && item2 && item1.name === item2.name) {
-                    // Match found
+                const [firstId, secondId] = flipped;
+                const card1 = cards.find(c => c.id === firstId);
+                const card2 = cards.find(c => c.id === secondId);
+
+                if (card1 && card2 && card1.pairId === card2.pairId) {
                     matched.push(firstId, secondId);
                     flipped = [];
                     canClick = true;
-                    checkWinCondition();
+
+                    if (matched.length === cards.length) {
+                        isWon = true;
+
+                        // 현재 스테이지 완료 처리
+                        if (!completedStages.includes(currentStage)) {
+                            completedStages.push(currentStage);
+                        }
+
+                        // 다음 스테이지 잠금 해제
+                        if (currentStage < 3 && !unlockedStages.includes(currentStage + 1)) {
+                            unlockedStages.push(currentStage + 1);
+                        }
+
+                        // 랭킹에 추가
+                        const stage = STAGES_DATA.stages.find(s => s.id === currentStage);
+                        rankingData.push({
+                            name: playerName,
+                            stage: stage.name,
+                            moves: moves
+                        });
+                        rankingData.sort((a, b) => a.moves - b.moves);
+                        if (rankingData.length > 20) rankingData = rankingData.slice(0, 20);
+
+                        saveProgress();
+                        saveRanking();
+                    }
                     renderGame();
                 } else {
-                    // No match: flip back after delay
                     setTimeout(() => {
                         flipped = [];
                         canClick = true;
-                        renderGame(); // Re-render to flip them back
+                        renderGame();
                     }, 1000);
                 }
             }
         };
 
-        // --- Renderer Functions ---
+        // ===================================
+        // 렌더링 함수
+        // ===================================
+        const renderHeader = () => {
+            if (!currentUser) {
+                return `
+                    <div class="fixed top-4 right-4 z-50">
+                        <button
+                            onclick="window.signInWithGoogle()"
+                            class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
+                                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                            </svg>
+                            <span class="font-bold text-gray-700">Google 로그인</span>
+                        </button>
+                    </div>
+                `;
+            }
 
-        const renderNavButton = (icon, label, page) => `
-            <button
-                onclick="window.goToPage('${page}')"
-                class="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition duration-300 text-sm"
-            >
-                <svg data-lucide="${icon}" class="w-5 h-5"></svg>
-                <span>${label}</span>
-            </button>
-        `;
+            return `
+                <div class="fixed top-4 right-4 z-50">
+                    <div class="relative">
+                        <img
+                            src="${userProfile.photoURL || 'https://via.placeholder.com/40'}"
+                            alt="Profile"
+                            class="profile-image"
+                            onclick="window.toggleProfileDropdown()"
+                        />
+                        <div id="profileDropdown" class="profile-dropdown">
+                            <div class="p-4 border-b border-gray-100">
+                                <p class="font-bold text-gray-800">${userProfile.displayName || 'Unknown User'}</p>
+                                <p class="text-sm text-gray-500">${userProfile.email || ''}</p>
+                            </div>
+                            <div class="p-2">
+                                <button
+                                    onclick="window.signOutUser()"
+                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                >
+                                    로그아웃
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleProfileDropdown = () => {
+            const dropdown = document.getElementById('profileDropdown');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+            }
+        };
+
+        // 드롭다운 외부 클릭시 닫기
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('profileDropdown');
+            const profileImage = document.querySelector('.profile-image');
+            if (dropdown && profileImage && !profileImage.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        const renderWelcome = () => {
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <div class="min-h-screen flex items-center justify-center p-8">
+                    <div class="bg-white rounded-3xl shadow-2xl p-12 max-w-md w-full text-center">
+                        <h1 class="text-4xl font-bold text-gray-800 mb-6">K-Everything<br/>Memory Game</h1>
+                        <p class="text-gray-600 mb-8">한국 문화재, 음식, 영화를 배우는<br/>재미있는 카드 게임</p>
+
+                        <div class="mb-6">
+                            <label class="block text-left text-sm font-bold text-gray-700 mb-2">플레이어 이름</label>
+                            <input
+                                type="text"
+                                id="playerNameInput"
+                                placeholder="이름을 입력하세요"
+                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-center text-lg"
+                                maxlength="10"
+                            />
+                        </div>
+
+                        <button
+                            onclick="window.startGameWithName()"
+                            class="w-full py-4 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 text-lg"
+                        >
+                            게임 시작
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Enter 키로도 시작 가능
+            setTimeout(() => {
+                const input = document.getElementById('playerNameInput');
+                if (input) {
+                    input.focus();
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            window.startGameWithName();
+                        }
+                    });
+                }
+            }, 100);
+        };
+
+        const renderStages = () => {
+            const stagesHtml = STAGES_DATA.stages.map(stage => {
+                const isUnlocked = unlockedStages.includes(stage.id);
+                const isCompleted = completedStages.includes(stage.id);
+
+                return `
+                    <div class="relative ${isUnlocked ? '' : 'locked'} bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-all duration-300">
+                        ${!isUnlocked ? '<div class="absolute top-4 right-4 text-xs px-3 py-1 bg-gray-400 rounded-full text-white font-bold">LOCK</div>' : ''}
+                        ${isCompleted ? '<div class="absolute top-4 right-4 text-xs px-3 py-1 bg-green-500 rounded-full text-white font-bold">CLEAR</div>' : ''}
+
+                        <div class="text-center mb-6">
+                            <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage ${stage.id}</h2>
+                            <p class="text-xl text-gray-600">${stage.name}</p>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-2 mb-6">
+                            ${stage.items.slice(0, 8).map(item => `
+                                <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                    <img src="../assets/img/${item.img}" alt="${item.title}" class="w-full h-full object-cover">
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <button
+                            onclick="window.initializeGame(${stage.id})"
+                            class="w-full py-3 px-6 rounded-lg font-bold text-white transition-all duration-300 ${
+                                isUnlocked
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                                    : 'bg-gray-400 cursor-not-allowed'
+                            }"
+                            ${!isUnlocked ? 'disabled' : ''}
+                        >
+                            ${isUnlocked ? '게임 시작' : '잠금'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <div class="min-h-screen p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-12">
+                            <h1 class="text-5xl font-bold text-gray-800 mb-4">K-Everything Memory Game</h1>
+                            <p class="text-xl text-gray-600 mb-2">플레이어: ${playerName}</p>
+                            <p class="text-lg text-gray-500">한국 문화재부터 음식, 영화까지 단계별로 도전해보세요</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                            ${stagesHtml}
+                        </div>
+
+                        <div class="flex justify-center gap-4">
+                            <button
+                                onclick="window.goToPage('collection')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-300"
+                            >
+                                내 컬렉션 보기
+                            </button>
+                            <button
+                                onclick="window.goToPage('ranking')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 transition-all duration-300"
+                            >
+                                랭킹 보기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
 
         const renderCard = (card) => {
             const isFlipped = flipped.includes(card.id) || matched.includes(card.id);
-            const isMatched = matched.includes(card.id);
-            const cursorClass = isMatched ? 'cursor-default' : 'cursor-pointer';
 
             return `
-                <div 
-                    id="card-${card.id}"
-                    class="aspect-square perspective ${cursorClass}"
+                <div
+                    class="perspective cursor-pointer"
                     onclick="window.handleCardClick(${card.id})"
                 >
-                    <div class="relative w-full h-full card-inner transform-style-preserve-3d 
-                        ${isFlipped ? 'rotate-y-180' : ''}"
-                    >
-                        <!-- Card Back (Movie Theme) -->
-                        <div class="absolute backface-hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-xl border-4 border-indigo-700 flex items-center justify-center">
-                            <svg data-lucide="film" class="w-12 h-12 text-yellow-300 animate-pulse"></svg>
+                    <div class="relative w-full aspect-square card-transition transform-3d ${isFlipped ? 'flip' : ''}">
+                        <!-- 카드 뒷면 -->
+                        <div class="absolute w-full h-full backface-hidden bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg flex items-center justify-center">
+                            <div class="text-6xl text-white font-bold">?</div>
                         </div>
-                        
-                        <!-- Card Front (K-Movie Content) -->
-                        <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-2 rotate-y-180">
-                            <img src="../data/img/${card.img}" alt="${card.name}" class="w-full h-full object-cover rounded-lg mb-1" style="max-height: 80%;" />
-                            <span class="text-xs md:text-sm font-bold text-gray-800 text-center">${card.name}</span>
+
+                        <!-- 카드 앞면 -->
+                        <div class="absolute w-full h-full backface-hidden flip bg-white rounded-xl shadow-lg overflow-hidden">
+                            <img src="../assets/img/${card.img}" alt="${card.title}" class="w-full h-full object-cover">
                         </div>
                     </div>
                 </div>
@@ -248,20 +592,40 @@
         };
 
         const renderGame = () => {
+            const stage = STAGES_DATA.stages.find(s => s.id === currentStage);
+            const totalPairs = cards.length / 2;
+            const matchedPairs = matched.length / 2;
+
             const cardGrid = cards.map(renderCard).join('');
-            
+
             let winModal = '';
             if (isWon) {
+                const nextStage = currentStage + 1;
+                const hasNext = nextStage <= 3;
+
                 winModal = `
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center animate-pop-in max-w-md">
-                            <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 축하합니다! 🎉</h2>
-                            <p class="text-lg text-gray-700 mb-6">당신은 <strong>${moves}번</strong> 만에 모든 K-Movie 카드를 맞췄습니다!</p>
-                            <button 
-                                onclick="window.goToPage('leaderboard')"
-                                class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-xl text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 text-lg"
+                        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-md">
+                            <h2 class="text-3xl font-bold text-green-600 mb-4">완료!</h2>
+                            <p class="text-xl text-gray-700 mb-2">시도 횟수: ${moves}회</p>
+                            <p class="text-lg text-gray-600 mb-6">${stage.name} 단계를 클리어했습니다</p>
+
+                            ${hasNext ? `
+                                <button
+                                    onclick="window.initializeGame(${nextStage})"
+                                    class="w-full mb-3 py-3 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                                >
+                                    다음 단계로
+                                </button>
+                            ` : `
+                                <p class="text-lg font-bold text-purple-600 mb-4">모든 단계를 완료했습니다!</p>
+                            `}
+
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="w-full py-3 px-6 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
                             >
-                                <svg data-lucide="trophy" class="inline w-5 h-5 mr-2"></svg> 랭킹 확인
+                                스테이지 선택
                             </button>
                         </div>
                     </div>
@@ -269,359 +633,228 @@
             }
 
             appContainer.innerHTML = `
-                <div class="p-4 flex flex-col items-center min-h-screen">
-                    <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 my-6 tracking-tight">
-                        <svg data-lucide="film" class="inline w-8 h-8 mr-2 text-indigo-600"></svg>
-                        K-Movie Memory Master
-                    </h1>
+                ${renderHeader()}
+                <div class="min-h-screen p-4">
+                    <div class="max-w-4xl mx-auto">
+                        <!-- 헤더 -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <button
+                                    onclick="window.goToPage('stages')"
+                                    class="py-2 px-4 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
+                                >
+                                    돌아가기
+                                </button>
 
-                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl mb-6">
-                        <div class="flex justify-between items-center mb-4 border-b pb-3">
-                            <div class="flex flex-col items-start">
-                                <span class="text-xl font-bold text-gray-700">시도 횟수: <span class="text-indigo-500">${moves}</span></span>
-                                <span class="text-sm text-gray-500 mt-1">남은 쌍: ${totalPairs - (matched.length / 2)} / ${totalPairs}</span>
+                                <div class="text-center">
+                                    <h2 class="text-2xl font-bold text-gray-800">Stage ${currentStage}: ${stage.name}</h2>
+                                </div>
+
+                                <button
+                                    onclick="window.initializeGame(${currentStage})"
+                                    class="py-2 px-4 rounded-lg font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 transition-all duration-300"
+                                >
+                                    다시하기
+                                </button>
                             </div>
-                            <button
-                                onclick="window.initializeGame()"
-                                class="bg-gradient-to-r from-red-500 to-pink-600 hover:shadow-xl text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 flex items-center"
-                            >
-                                <svg data-lucide="rotate-ccw" class="w-4 h-4 mr-1"></svg> 재시작
-                            </button>
+
+                            <div class="flex justify-center gap-8 text-center">
+                                <div>
+                                    <p class="text-sm text-gray-600">시도 횟수</p>
+                                    <p class="text-2xl font-bold text-purple-600">${moves}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">진행도</p>
+                                    <p class="text-2xl font-bold text-pink-600">${matchedPairs} / ${totalPairs}</p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-4 gap-3 md:gap-4">
+                        <!-- 카드 그리드 -->
+                        <div class="grid grid-cols-4 gap-4">
                             ${cardGrid}
                         </div>
                     </div>
-                    
-                    ${winModal}
-
-                    <!-- Navigation Buttons -->
-                    <div class="mt-6 flex flex-wrap justify-center gap-3">
-                        ${renderNavButton('library', '카드 도감', 'collection')}
-                        ${renderNavButton('graduation-cap', 'AI 학습', 'ai-learning')}
-                        ${renderNavButton('trophy', '랭킹', 'leaderboard')}
-                    </div>
                 </div>
+
+                ${winModal}
             `;
         };
 
         const renderCollection = () => {
-            const cardList = K_MOVIE_ITEMS.map((item, index) => `
-                <div key=${index} class="bg-white p-4 rounded-xl shadow-lg border-2 border-yellow-400 hover:shadow-2xl transition duration-300">
-                    <img src="../data/img/${item.img}" alt="${item.name}" class="w-full h-40 object-cover rounded-lg mb-2" />
-                    <h3 class="text-lg font-bold text-gray-800 mb-1">${item.icon} ${item.name}</h3>
-                    <p class="text-xs text-gray-500 mb-2">장르: ${item.genre} | 감독: ${item.director}</p>
-                    <p class="text-sm text-gray-600">${item.desc}</p>
+            const allItems = STAGES_DATA.stages.flatMap(stage =>
+                stage.items.map(item => ({
+                    ...item,
+                    stageName: stage.name,
+                    stageId: stage.id,
+                    isUnlocked: completedStages.includes(stage.id) // 완료해야만 해제
+                }))
+            );
+
+            const itemsHtml = allItems.map(item => `
+                <div class="${item.isUnlocked ? '' : 'locked'} bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+                    <div class="aspect-square overflow-hidden">
+                        <img src="../assets/img/${item.img}" alt="${item.title}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-lg text-gray-800 mb-1">${item.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${item.stageName}</p>
+                        <p class="text-xs text-gray-500">${item.isUnlocked ? item.desc : '스테이지를 클리어하세요'}</p>
+                    </div>
                 </div>
             `).join('');
 
             appContainer.innerHTML = `
-                <div class="p-6 min-h-screen">
-                    <h1 class="text-3xl font-bold text-yellow-700 mb-6 border-b pb-3">📚 K-Movie 영화 도감</h1>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        ${cardList}
-                    </div>
-                    <button
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-xl text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
-                    >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
-                    </button>
-                </div>
-            `;
-        };
-
-        // --- AI Learning Logic & Renderer (Placeholder) ---
-        let currentQuiz = null;
-        let aiFeedback = null;
-        let isProcessing = false;
-
-        const generateQuiz = () => {
-            isProcessing = true;
-            aiFeedback = null;
-            renderAILearning();
-
-            setTimeout(() => {
-                const item = K_MOVIE_ITEMS[Math.floor(Math.random() * K_MOVIE_ITEMS.length)];
-                currentQuiz = {
-                    question: `다음 설명이 나타내는 한국 영화는 무엇일까요? "${item.desc}"`,
-                    correctAnswer: item.name,
-                    item: item,
-                };
-                isProcessing = false;
-                if (document.getElementById('ai-answer')) {
-                    document.getElementById('ai-answer').value = '';
-                }
-                renderAILearning();
-            }, 1500);
-        };
-
-        const handleSubmit = () => {
-            const userAnswer = document.getElementById('ai-answer').value.trim();
-            if (!currentQuiz || isProcessing || userAnswer === '') return;
-
-            isProcessing = true;
-            renderAILearning();
-
-            const isCorrect = userAnswer.toLowerCase() === currentQuiz.correctAnswer.toLowerCase();
-            
-            setTimeout(() => {
-                if (isCorrect) {
-                    aiFeedback = {
-                        type: 'correct',
-                        message: `✅ 정답! ${currentQuiz.item.icon} "${currentQuiz.item.name}"에 대해 완벽하게 이해하셨군요!\n감독: ${currentQuiz.item.director}\n출연: ${currentQuiz.item.actor}`
-                    };
-                } else {
-                    aiFeedback = {
-                        type: 'incorrect',
-                        message: `❌ 아쉽지만 틀렸어요. 정답은 "${currentQuiz.item.name}"입니다.\n${currentQuiz.item.desc}`
-                    };
-                }
-                isProcessing = false;
-                renderAILearning();
-            }, 1000);
-        };
-
-        const renderAILearning = () => {
-            // Retrieve current input value before re-rendering
-            const currentAnswerValue = document.getElementById('ai-answer')?.value || '';
-
-            const quizContent = currentQuiz ? `
-                <div class="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-l-4 border-indigo-400">
-                    <p class="text-md text-gray-700 font-semibold">${currentQuiz.question}</p>
-                </div>
-                <input
-                    type="text"
-                    id="ai-answer"
-                    value="${currentAnswerValue}"
-                    oninput="this.setAttribute('value', this.value)"
-                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                    placeholder="정답을 입력하세요 (예: 기생충)"
-                />
-                <button 
-                    onclick="window.handleSubmit()"
-                    class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-xl text-white font-bold py-3 rounded-lg shadow-md transition duration-300 flex items-center justify-center ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
-                    ${isProcessing ? 'disabled' : ''}
-                >
-                    <svg data-lucide="check" class="w-5 h-5 mr-2"></svg> 정답 확인
-                </button>
-            ` : '';
-
-            const feedbackContent = aiFeedback ? `
-                <div class="p-4 rounded-lg font-semibold whitespace-pre-line ${aiFeedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                    ${aiFeedback.message}
-                </div>
-            ` : '';
-
-
-            appContainer.innerHTML = `
-                <div class="p-6 min-h-screen">
-                    <h1 class="text-3xl font-bold text-blue-700 mb-6 border-b pb-3 flex items-center">
-                        <svg data-lucide="graduation-cap" class="w-6 h-6 mr-2"></svg> AI 기반 학습 센터
-                    </h1>
-                    
-                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto space-y-4">
-                        <p class="text-lg font-semibold text-gray-800">
-                            <span class="text-indigo-500 font-extrabold">🎓 K-Movie Quiz:</span> 영화에 대한 퀴즈를 풀어볼까요?
-                        </p>
-
-                        ${isProcessing ? 
-                            `<div class="text-center text-indigo-500"><svg data-lucide="loader-2" class="animate-spin inline mr-2 w-6 h-6"></svg> 퀴즈 생성/평가 중...</div>` 
-                            : ''
-                        }
-
-                        ${!isProcessing ? quizContent : ''}
-                        
-                        ${feedbackContent}
-                        
-                        <button 
-                            onclick="window.generateQuiz()"
-                            class="w-full mt-4 bg-gradient-to-r from-yellow-500 to-orange-600 hover:shadow-xl text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
-                            ${isProcessing ? 'disabled' : ''}
-                        >
-                            <svg data-lucide="refresh-cw" class="inline w-5 h-5 mr-2"></svg> 다음 문제 풀기
-                        </button>
-                    </div>
-                    
-                    <button
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-xl text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
-                    >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
-                    </button>
-                </div>
-            `;
-            // Re-run icon rendering after innerHTML update
-            if (window.createIcons && window.icons) { // Check for icons globally if available
-                window.createIcons({ icons: window.icons });
-            }
-        };
-
-        // --- Leaderboard Logic & Renderer ---
-
-        const renderLeaderboard = (rankings, isLoading) => {
-            let rankingContent = '';
-            if (isLoading) {
-                rankingContent = `<div class="p-4 flex justify-center items-center"><svg data-lucide="loader-2" class="animate-spin text-blue-500 w-6 h-6"></svg></div>`;
-            } else if (rankings.length === 0) {
-                rankingContent = `<p class="text-center text-gray-500">아직 랭킹 기록이 없습니다. 첫 승리자가 되어보세요!</p>`;
-            } else {
-                rankingContent = rankings.map((rank, index) => `
-                    <div 
-                        class="flex justify-between items-center p-3 rounded-lg ${
-                            rank.playerUid === currentUserId ? 'bg-yellow-100 font-extrabold shadow-md' : 'bg-gray-50'
-                        }"
-                    >
-                        <span class="text-xl font-bold ${index === 0 ? 'text-yellow-600' : 'text-gray-700'}">${index + 1}.</span>
-                        <span class="flex-1 ml-4 truncate text-sm">
-                            ${rank.playerUid === currentUserId ? '🏆 나 (You)' : `ID: ${rank.playerUid.substring(0, 8)}...`}
-                        </span>
-                        <span class="text-lg font-mono text-indigo-600">${rank.moves} Moves</span>
-                    </div>
-                `).join('');
-            }
-
-            appContainer.innerHTML = `
-                <div class="p-6 min-h-screen">
-                    <h1 class="text-3xl font-bold text-purple-700 mb-6 border-b pb-3 flex items-center justify-center">
-                        <svg data-lucide="trophy" class="w-6 h-6 mr-2"></svg> 명예의 전당
-                    </h1>
-                    
-                    <div class="p-4 bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto">
-                        <h2 class="text-2xl font-bold mb-4 text-center text-indigo-700 border-b pb-2">🏆 Top 10 (최소 시도)</h2>
-                        <div class="space-y-2">
-                            ${rankingContent}
+                ${renderHeader()}
+                <div class="min-h-screen p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-800 mb-4">내 컬렉션</h1>
+                            <p class="text-lg text-gray-600">스테이지를 클리어하면 해당 항목이 잠금 해제됩니다</p>
                         </div>
-                        <div class="mt-4 text-xs text-gray-400 truncate">
-                            당신의 유저 ID: ${currentUserId || '로딩 중...'}
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                            ${itemsHtml}
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
                         </div>
                     </div>
-                    
-                    <button
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-xl text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
-                    >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
-                    </button>
                 </div>
             `;
-            // Re-run icon rendering after innerHTML update
-            if (window.createIcons && window.icons) { // Check for icons globally if available
-                window.createIcons({ icons: window.icons });
-            }
         };
 
-        const setupLeaderboardListener = () => {
-            if (!db) return;
-            const rankingCollectionPath = `artifacts/${appId}/public/data/kmovie_ranking`;
+        const renderRanking = () => {
+            const rankingHtml = rankingData.map((rank, index) => `
+                <div class="flex justify-between items-center p-4 ${index < 3 ? 'bg-yellow-50' : 'bg-gray-50'} rounded-lg">
+                    <div class="flex items-center gap-4">
+                        <span class="text-2xl font-bold ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-gray-700'}">${index + 1}</span>
+                        <div>
+                            <p class="font-bold text-gray-800">${rank.name}</p>
+                            <p class="text-sm text-gray-600">${rank.stage}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-bold text-purple-600">${rank.moves}회</p>
+                    </div>
+                </div>
+            `).join('');
 
-            const q = query(
-                collection(db, rankingCollectionPath),
-                orderBy("moves", "asc"),
-                orderBy("timestamp", "asc"),
-                limit(10)
-            );
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <div class="min-h-screen p-8">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-800 mb-4">랭킹</h1>
+                            <p class="text-lg text-gray-600">시도 횟수가 적을수록 높은 순위!</p>
+                        </div>
 
-            onSnapshot(q, (snapshot) => {
-                const newRankings = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                if (currentPage === 'leaderboard') {
-                    renderLeaderboard(newRankings, false);
-                }
-            }, (error) => {
-                console.error("Error fetching rankings: ", error);
-                if (currentPage === 'leaderboard') {
-                    renderLeaderboard([], false);
-                }
-            });
+                        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                            <div class="space-y-3">
+                                ${rankingHtml.length > 0 ? rankingHtml : '<p class="text-center text-gray-500">아직 기록이 없습니다</p>'}
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
         };
 
-        // --- Master Render Function ---
+        // ===================================
+        // 마스터 렌더 함수
+        // ===================================
         const render = () => {
-            if (!isAuthReady) {
-                // Initial loading state is already in HTML, do nothing
-                return;
-            }
-
             switch (currentPage) {
+                case 'welcome':
+                    renderWelcome();
+                    break;
+                case 'stages':
+                    renderStages();
+                    break;
                 case 'game':
                     renderGame();
                     break;
                 case 'collection':
                     renderCollection();
                     break;
-                case 'ai-learning':
-                    renderAILearning();
-                    // Initial load/re-load of quiz data if necessary
-                    if (!currentQuiz && !isProcessing) {
-                        generateQuiz();
-                    }
-                    break;
-                case 'leaderboard':
-                    renderLeaderboard([], true); // Render with loading state first
-                    setupLeaderboardListener();
+                case 'ranking':
+                    renderRanking();
                     break;
                 default:
-                    appContainer.innerHTML = '<h1 class="text-red-500 text-center mt-10">페이지 오류</h1>';
+                    appContainer.innerHTML = '<h1 class="text-center text-red-500 mt-10">페이지 오류</h1>';
             }
         };
 
-        // --- Initial Setup (Run on window load) ---
-        async function initFirebase() {
-            if (!firebaseConfig) { 
-                console.warn("Firebase config missing. Running in non-persistent mode.");
-                currentUserId = crypto.randomUUID();
-                isAuthReady = true;
-                initializeGame();
-                render();
-                return;
-            }
-            
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+        // ===================================
+        // 초기화
+        // ===================================
+        async function init() {
+            await loadData();
 
-            // 1. Set up Auth Listener
-            onAuthStateChanged(auth, (user) => {
+            // Firebase 인증 상태 감지
+            window.onAuthStateChanged(window.firebaseAuth, async (user) => {
                 if (user) {
-                    currentUserId = user.uid;
+                    currentUser = user;
+                    userProfile = {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        photoURL: user.photoURL
+                    };
+
+                    // Firestore에서 사용자 데이터 로드
+                    await loadUserData();
                 } else {
-                    currentUserId = crypto.randomUUID();
+                    currentUser = null;
+                    userProfile = {
+                        uid: null,
+                        email: null,
+                        displayName: null,
+                        photoURL: null
+                    };
                 }
-                isAuthReady = true;
-                initializeGame();
+
                 render();
-                // Ensure icons are created after auth is ready and initial render
-                if (window.createIcons && window.icons) {
-                    window.createIcons({ icons: window.icons });
-                }
             });
 
-            // 2. Perform Initial Sign-In
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase Sign-In Error:", error);
+            // 이름이 설정되어 있으면 스테이지로, 아니면 환영 페이지로
+            if (playerNameSet && playerName) {
+                currentPage = 'stages';
+            } else {
+                currentPage = 'welcome';
             }
+
+            render();
         }
-        
-        // Export functions to global scope so they can be called from HTML onclick attributes
-        window.handleCardClick = handleCardClick;
+
+        // 전역 함수로 내보내기
         window.initializeGame = initializeGame;
+        window.handleCardClick = handleCardClick;
         window.goToPage = goToPage;
-        window.generateQuiz = generateQuiz;
-        window.handleSubmit = handleSubmit;
+        window.signInWithGoogle = signInWithGoogle;
+        window.signOutUser = signOutUser;
+        window.startGameWithName = () => {
+            const input = document.getElementById('playerNameInput');
+            const name = input?.value.trim() || '익명';
+            setPlayerName(name);
+        };
 
-        // Start everything
-        window.onload = initFirebase;
-
+        // 시작
+        init();
     </script>
 </body>
 </html>

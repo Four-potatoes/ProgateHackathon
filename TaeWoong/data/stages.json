@@ -1,0 +1,236 @@
+{
+    "stages": [
+        {
+            "id": 1,
+            "name": "문화재",
+            "category": "culture",
+            "unlocked": true,
+            "items": [
+                {
+                    "idx": 1,
+                    "title": "불국사·석굴암",
+                    "img": "culture/석굴암.jpg",
+                    "desc": "경북 경주의 신라시대 불교 유적",
+                    "address": "경북 경주시 석굴로 238",
+                    "type": "유네스코 세계문화유산"
+                },
+                {
+                    "idx": 2,
+                    "title": "수원 화성",
+                    "img": "culture/수원화성.jpg",
+                    "desc": "조선 정조시대의 계획도시 성곽",
+                    "address": "경기 수원시 장안구 영화동 320-2",
+                    "type": "유네스코 세계문화유산"
+                },
+                {
+                    "idx": 3,
+                    "title": "창덕궁",
+                    "img": "culture/창덕궁.jpg",
+                    "desc": "조선시대 궁궐 중 가장 보존이 잘된 곳",
+                    "address": "서울 종로구 율곡로 99",
+                    "type": "유네스코 세계문화유산"
+                },
+                {
+                    "idx": 4,
+                    "title": "훈민정음",
+                    "img": "culture/훈민정음.jpg",
+                    "desc": "세종대왕이 창제한 한글의 원리와 사용법",
+                    "address": "",
+                    "type": "유네스코 세계기록유산"
+                },
+                {
+                    "idx": 5,
+                    "title": "종묘",
+                    "img": "culture/종묘.jpg",
+                    "desc": "조선왕조 역대 왕과 왕비의 신주를 모신 사당",
+                    "address": "서울 종로구 종로 157",
+                    "type": "유네스코 세계문화유산"
+                },
+                {
+                    "idx": 6,
+                    "title": "김장",
+                    "img": "culture/김장.jpg",
+                    "desc": "한국의 전통 김치 담그기 문화",
+                    "address": "",
+                    "type": "유네스코 인류무형문화유산"
+                },
+                {
+                    "idx": 7,
+                    "title": "판소리",
+                    "img": "culture/판소리.jpg",
+                    "desc": "한국 전통 서사 음악",
+                    "address": "",
+                    "type": "유네스코 인류무형문화유산"
+                },
+                {
+                    "idx": 8,
+                    "title": "탈춤",
+                    "img": "culture/탈춤.jpg",
+                    "desc": "탈을 쓰고 추는 한국 전통 춤",
+                    "address": "",
+                    "type": "유네스코 인류무형문화유산"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "음식",
+            "category": "food",
+            "unlocked": false,
+            "items": [
+                {
+                    "idx": 1,
+                    "title": "김치",
+                    "img": "food/김치.jpg",
+                    "desc": "한국의 대표적인 발효 음식",
+                    "origin": "삼국시대부터 전해짐",
+                    "type": "발효식품"
+                },
+                {
+                    "idx": 2,
+                    "title": "불고기",
+                    "img": "food/불고기.jpg",
+                    "desc": "양념한 고기를 구워 먹는 한국 요리",
+                    "origin": "고구려시대 맥적",
+                    "type": "구이"
+                },
+                {
+                    "idx": 3,
+                    "title": "비빔밥",
+                    "img": "food/비빔밥.jpg",
+                    "desc": "밥에 여러 나물과 고추장을 넣어 비벼 먹는 음식",
+                    "origin": "조선시대",
+                    "type": "밥요리"
+                },
+                {
+                    "idx": 4,
+                    "title": "떡볶이",
+                    "img": "food/떡볶이.jpg",
+                    "desc": "가래떡을 고추장 양념에 볶은 한국 간식",
+                    "origin": "1950년대 현대식 떡볶이",
+                    "type": "분식"
+                },
+                {
+                    "idx": 5,
+                    "title": "삼겹살",
+                    "img": "food/삼겹살.jpg",
+                    "desc": "돼지고기 삼겹살을 구워 먹는 요리",
+                    "origin": "1970년대 대중화",
+                    "type": "구이"
+                },
+                {
+                    "idx": 6,
+                    "title": "치킨 & 맥주",
+                    "img": "food/치맥.jpg",
+                    "desc": "치킨과 맥주를 함께 즐기는 한국 문화",
+                    "origin": "2000년대 유행",
+                    "type": "치맥"
+                },
+                {
+                    "idx": 7,
+                    "title": "김밥",
+                    "img": "food/김밥.jpg",
+                    "desc": "김에 밥과 여러 재료를 말아 만든 음식",
+                    "origin": "일제강점기 이후",
+                    "type": "분식"
+                },
+                {
+                    "idx": 8,
+                    "title": "라면",
+                    "img": "food/라면.jpg",
+                    "desc": "한국식 인스턴트 면 요리",
+                    "origin": "1963년 삼양라면",
+                    "type": "면요리"
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "영화",
+            "category": "movie",
+            "unlocked": false,
+            "items": [
+                {
+                    "idx": 1,
+                    "title": "기생충",
+                    "img": "movie/기생충.jpg",
+                    "desc": "계급 간의 대립과 사회적 격차를 다룬 작품",
+                    "genre": "범죄",
+                    "director": "봉준호",
+                    "actor": "송강호, 이선균, 조여정, 최우식, 박소담",
+                    "year": "2019"
+                },
+                {
+                    "idx": 2,
+                    "title": "올드보이",
+                    "img": "movie/올드보이.jpg",
+                    "desc": "15년간의 감금과 복수를 그린 스릴러",
+                    "genre": "복수극",
+                    "director": "박찬욱",
+                    "actor": "최민식, 유지태, 강혜정",
+                    "year": "2003"
+                },
+                {
+                    "idx": 3,
+                    "title": "부산행",
+                    "img": "movie/부산행.jpg",
+                    "desc": "좀비 바이러스로부터 살아남기 위한 사투",
+                    "genre": "액션",
+                    "director": "연상호",
+                    "actor": "공유, 정유미, 마동석, 최우식",
+                    "year": "2016"
+                },
+                {
+                    "idx": 4,
+                    "title": "더 파이브",
+                    "img": "movie/더파이브.jpg",
+                    "desc": "5명의 범인을 추적하는 치밀한 스릴러",
+                    "genre": "스릴러",
+                    "director": "정연식",
+                    "actor": "김선아, 온주완, 마동석",
+                    "year": "2013"
+                },
+                {
+                    "idx": 5,
+                    "title": "명량",
+                    "img": "movie/명량.jpg",
+                    "desc": "이순신 장군의 명량대첩을 다룬 역사극",
+                    "genre": "사극",
+                    "director": "김한민",
+                    "actor": "최민식, 류승룡, 조진웅",
+                    "year": "2014"
+                },
+                {
+                    "idx": 6,
+                    "title": "범죄도시",
+                    "img": "movie/범죄도시.jpg",
+                    "desc": "조직폭력배와 경찰의 대결을 그린 액션 영화",
+                    "genre": "범죄",
+                    "director": "강윤성",
+                    "actor": "마동석, 김무열, 박지환",
+                    "year": "2017"
+                },
+                {
+                    "idx": 7,
+                    "title": "헤어질 결심",
+                    "img": "movie/헤어질결심.jpg",
+                    "desc": "형사와 용의자 사이의 비밀스러운 로맨스",
+                    "genre": "멜로",
+                    "director": "박찬욱",
+                    "actor": "탕웨이, 박해일",
+                    "year": "2022"
+                },
+                {
+                    "idx": 8,
+                    "title": "콘크리트 유토피아",
+                    "img": "movie/콘크리트유토피아.jpg",
+                    "desc": "대지진 이후 유일하게 남은 아파트의 생존기",
+                    "genre": "재난",
+                    "director": "엄태화",
+                    "actor": "이병헌, 박서준, 박보영",
+                    "year": "2023"
+                }
+            ]
+        }
+    ]
+}
