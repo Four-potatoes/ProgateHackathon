@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"TaeWoong/src/index.html\")"
+      "Bash(\"TaeWoong/src/index.html\")",
+      "Bash(python -m http.server:*)"
     ],
     "deny": [],
     "ask": []
