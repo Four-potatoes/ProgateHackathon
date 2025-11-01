@@ -89,6 +89,7 @@
         let processing = false;
         let selectedCard = null; // 도감에서 선택된 카드
         let solvedQuizzes = new Set(); // 풀린 퀴즈들 (형식: "카드이름-fill" or "카드이름-write")
+        let dummyCreated = false; // 더미 데이터 생성 여부
         
         const root = document.getElementById('app');
 
