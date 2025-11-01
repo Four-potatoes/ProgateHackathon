@@ -5,7 +5,8 @@
       "Bash(python -m http.server:*)",
       "Bash(start http://localhost/phpmyadmin)",
       "Bash(start https://console.cloud.google.com/apis/credentials/consent)",
-      "Bash(start https://console.cloud.google.com/apis/library/people.googleapis.com)"
+      "Bash(start https://console.cloud.google.com/apis/library/people.googleapis.com)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
