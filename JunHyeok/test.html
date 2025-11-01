@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고양이 계산기</title>
+    <style>
+        /* 기존 계산기 CSS는 그대로 유지 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            position: relative; /* 고양이 위치 지정을 위해 relative 추가 */
+        }
+
+        .calculator {
+            width: 320px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #333;
+            z-index: 1; /* 고양이가 계산기 위에 오도록 */
+            position: relative; /* 고양이 메시지 위치 지정을 위해 */
+        }
+
+        #display {
+            width: 100%;
+            height: 80px;
+            background-color: #000;
+            color: #fff;
+            border: none;
+            text-align: right;
+            font-size: 3em;
+            padding: 0 20px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); 
+        }
+
+        .buttons button {
+            padding: 20px;
+            border: 1px solid #222;
+            background-color: #555;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        .buttons button:hover {
+            background-color: #666;
+        }
+
+        .clear, .operator[data-action="sign"], .operator[data-action="percent"] {
+            background-color: #a6a6a6;
+            color: #000;
+        }
+        .clear:hover, .operator[data-action="sign"]:hover, .operator[data-action="percent"]:hover {
+            background-color: #bbb;
+        }
+
+        .operator[data-operator], .equal {
+            background-color: #f09a36;
+            color: #fff;
+        }
+        .operator[data-operator]:hover, .equal:hover {
+            background-color: #ffb157;
+        }
+
+        .zero {
+            grid-column: span 2; 
+            text-align: left;
+            padding-left: 45px;
+        }
+
+        /* 고양이 캐릭터 CSS */
+        #cat-character {
+            position: absolute; /* 절대 위치 */
+            width: 100px; /* 고양이 크기 조절 */
+            height: auto;
+            top: 50%; /* body 기준 중앙 정렬 */
+            left: 50%; /* body 기준 중앙 정렬 */
+            transform: translate(-50%, -180%); /* 계산기 위로 이동 */
+            z-index: 2; /* 계산기보다 위에 */
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out; /* 부드러운 움직임 */
+        }
+
+        #cat-character.active {
+            transform: translate(-50%, -180%) scale(1.1); /* 클릭 시 살짝 커지는 효과 */
+        }
+
+        /* 고양이 말풍선 CSS */
+        #cat-message {
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            opacity: 0; /* 초기에는 숨김 */
+            transform: translateY(-10px); /* 살짝 위로 */
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            pointer-events: none; /* 메시지가 고양이 클릭 방해하지 않도록 */
+
+            /* 고양이 캐릭터 위에 상대적으로 위치 지정 */
+            left: 50%;
+            top: -20px; /* 고양이 캐릭터 상단 기준 */
+            transform: translateX(-50%) translateY(-10px);
+            z-index: 3;
+        }
+        #cat-character-container {
+             position: absolute;
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -180%); /* 이 컨테이너로 위치 조절 */
+             z-index: 2;
+        }
+        #cat-message.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-30px); /* 메시지가 나타날 때 위로 올라오는 효과 */
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <input type="text" id="display" readonly value="0">
+
+    <div class="buttons">
+        <button class="clear" data-action="clear">AC</button>
+        <button class="operator" data-action="sign">+/-</button>
+        <button class="operator" data-action="percent">%</button>
+        <button class="operator" data-operator="divide">÷</button>
+
+        <button data-value="7">7</button>
+        <button data-value="8">8</button>
+        <button data-value="9">9</button>
+        <button class="operator" data-operator="multiply">×</button>
+
+        <button data-value="4">4</button>
+        <button data-value="5">5</button>
+        <button data-value="6">6</button>
+        <button class="operator" data-operator="subtract">-</button>
+
+        <button data-value="1">1</button>
+        <button data-value="2">2</button>
+        <button data-value="3">3</button>
+        <button class="operator" data-operator="add">+</button>
+
+        <button class="zero" data-value="0">0</button>
+        <button data-value=".">.</button>
+        <button class="equal" data-action="calculate">=</button>
+    </div>
+</div>
+
+<div id="cat-character-container">
+    <img id="cat-character" src="https://assets.stickpng.com/images/58468b122d259e19e71239c8.png" alt="귀여운 고양이">
+    <div id="cat-message"></div>
+</div>
+
+
+<script>
+    // JavaScript 로직 (기존 계산기 로직 유지)
+    const calculator = {
+        displayValue: '0',
+        firstOperand: null,
+        waitingForSecondOperand: false,
+        operator: null,
+    };
+
+    const display = document.getElementById('display');
+    const catCharacter = document.getElementById('cat-character');
+    const catMessage = document.getElementById('cat-message');
+
+    // 고양이 메시지 표시 함수
+    function showCatMessage(message) {
+        catMessage.textContent = message;
+        catMessage.classList.add('show');
+        setTimeout(() => {
+            catMessage.classList.remove('show');
+        }, 2000); // 2초 후 메시지 사라짐
+    }
+
+    // 1. 디스플레이 업데이트
+    function updateDisplay() {
+        if (calculator.displayValue.length > 10) {
+            display.value = parseFloat(calculator.displayValue).toPrecision(10);
+        } else {
+            display.value = calculator.displayValue;
+        }
+    }
+
+    // 2. 숫자 및 소수점 입력 처리
+    function inputDigit(digit) {
+        const { displayValue, waitingForSecondOperand } = calculator;
+
+        if (waitingForSecondOperand) {
+            calculator.displayValue = digit;
+            calculator.waitingForSecondOperand = false;
+        } else {
+            if (digit === '.') {
+                if (displayValue.includes('.')) return;
+                calculator.displayValue = displayValue + digit;
+            } else {
+                calculator.displayValue = displayValue === '0' ? digit : displayValue + digit;
+            }
+        }
+    }
+
+    // 3. 계산 실행 (사칙연산)
+    function performCalculation(firstOperand, operator, secondOperand) {
+        firstOperand = parseFloat(firstOperand);
+        secondOperand = parseFloat(secondOperand);
+        
+        if (operator === 'divide') {
+            if (secondOperand === 0) {
+                showCatMessage("야옹! 0으로 나눌 수 없어요!");
+                return NaN; // NaN 반환 또는 오류 처리
+            }
+            return firstOperand / secondOperand;
+        } else if (operator === 'multiply') {
+            return firstOperand * secondOperand;
+        } else if (operator === 'subtract') {
+            return firstOperand - secondOperand;
+        } else if (operator === 'add') {
+            return firstOperand + secondOperand;
+        }
+        return secondOperand;
+    }
+
+    // 4. 연산자 처리 (+, -, x, /) 및 '='
+    function handleOperator(nextOperator) {
+        const { firstOperand, displayValue, operator, waitingForSecondOperand } = calculator;
+        const inputValue = parseFloat(displayValue);
+
+        if (operator && waitingForSecondOperand) {
+            calculator.operator = nextOperator;
+            return;
+        }
+
+        if (firstOperand === null) {
+            calculator.firstOperand = inputValue;
+        } else if (operator) {
+            const result = performCalculation(firstOperand, operator, inputValue);
+            if (isNaN(result)) { // 0으로 나누기 등으로 인한 오류 처리
+                calculator.displayValue = 'Error';
+                calculator.firstOperand = null;
+                calculator.waitingForSecondOperand = false;
+                calculator.operator = null;
+                return;
+            }
+            calculator.displayValue = String(result);
+            calculator.firstOperand = result;
+            // 계산이 완료되었을 때 고양이 반응
+            showCatMessage("야옹! 계산 완료!");
+        }
+
+        calculator.waitingForSecondOperand = true;
+        calculator.operator = nextOperator;
+    }
+
+    // 5. 특수 액션 처리 (AC, 부호, %)
+    function handleAction(action) {
+        if (action === 'clear') {
+            calculator.displayValue = '0';
+            calculator.firstOperand = null;
+            calculator.waitingForSecondOperand = false;
+            calculator.operator = null;
+            showCatMessage("야옹! 초기화 됐어요!");
+        } else if (action === 'sign') {
+            calculator.displayValue = String(parseFloat(calculator.displayValue) * -1);
+            showCatMessage("야옹! 부호 변경!");
+        } else if (action === 'percent') {
+            calculator.displayValue = String(parseFloat(calculator.displayValue) / 100);
+            showCatMessage("야옹! 퍼센트!");
+        }
+    }
+
+    // 6. 이벤트 리스너 등록 (이벤트 위임)
+    const buttons = document.querySelector('.buttons');
+    buttons.addEventListener('click', (event) => {
+        const { target } = event; 
+
+        if (!target.matches('button')) {
+            return;
+        }
+
+        if (target.dataset.value) {
+            inputDigit(target.dataset.value);
+        } else if (target.dataset.operator) {
+            handleOperator(target.dataset.operator);
+        } else if (target.dataset.action) {
+            if (target.dataset.action === 'calculate') {
+                if (calculator.operator && !calculator.waitingForSecondOperand) {
+                    handleOperator(calculator.operator);
+                }
+            } else {
+                handleAction(target.dataset.action);
+            }
+        }
+        
+        updateDisplay();
+    });
+
+    // 고양이 클릭 이벤트
+    catCharacter.addEventListener('click', () => {
+        catCharacter.classList.add('active'); // 클릭 시 애니메이션
+        showCatMessage("야옹! 쓰다듬어 주셔서 감사해요!");
+        setTimeout(() => {
+            catCharacter.classList.remove('active');
+        }, 300);
+    });
+
+    // 초기 디스플레이 설정
+    updateDisplay(); 
+</script>
+
+</body>
+</html>
