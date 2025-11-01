@@ -6,22 +6,55 @@
     <title>K-Culture Memory Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 카드 플립 애니메이션 */
+        /* 3D 카드 플립 애니메이션 */
         .perspective { perspective: 1000px; }
         .transform-3d { transform-style: preserve-3d; }
         .backface-hidden { backface-visibility: hidden; }
         .flip { transform: rotateY(180deg); }
-        .card-transition { transition: transform 0.5s; }
+        .card-transition { transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1); }
+        
         /* 승리 모달 애니메이션 */
         @keyframes pop {
             0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.05); }
             100% { transform: scale(1); opacity: 1; }
         }
-        .pop-in { animation: pop 0.3s ease-out forwards; }
-        /* 프로필 선택 애니메이션 */
-        .profile-selected {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 3px #6366f1;
+        .pop-in { animation: pop 0.5s ease-out forwards; }
+        
+        /* 유리 효과 */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .glass-effect-strong {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        
+        /* 호버 효과 */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 진행 바 애니메이션 */
+        .progress-bar {
+            transition: width 0.3s ease-out;
+        }
+        
+        /* 펄스 효과 */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.8); }
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
         }
     </style>
     <script type="module">
@@ -29,12 +62,12 @@
         window.addEventListener('load', () => createIcons({ icons }));
     </script>
 </head>
-<body class="min-h-screen font-sans bg-gray-50">
+<body class="min-h-screen font-sans">
     <div id="app" class="min-h-screen">
         <!-- 로딩 화면 -->
-        <div class="flex flex-col justify-center items-center h-screen bg-pink-50">
-            <svg data-lucide="loader-2" class="animate-spin text-indigo-500 w-12 h-12"></svg>
-            <p class="ml-4 text-xl text-gray-700 mt-4">로딩 중...</p>
+        <div class="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+            <svg data-lucide="loader-2" class="animate-spin text-purple-400 w-12 h-12"></svg>
+            <p class="ml-4 text-xl text-purple-200 mt-4">로딩 중...</p>
         </div>
     </div>
     <script type="module">
@@ -60,14 +93,14 @@
         };
 
         const ITEMS = [
-            { name: '한복', icon: '👘', desc: '한국의 전통 의상.' },
-            { name: '김치', icon: '🌶️', desc: '한국의 대표적인 발효 음식.' },
-            { name: '비빔밥', icon: '🍚', desc: '밥 위에 나물을 얹어 비벼 먹는 음식.' },
-            { name: '탈춤', icon: '🎭', desc: '탈을 쓰고 추는 전통 연희.' },
-            { name: '태극기', icon: '🇰🇷', desc: '대한민국의 국기.' },
-            { name: '궁궐', icon: '🏯', desc: '조선 시대 왕이 살던 큰 건축물.' },
-            { name: '붓글씨', icon: '🖋️', desc: '붓으로 쓰는 서예.' },
-            { name: '가야금', icon: '🎶', desc: '한국의 전통 현악기.' },
+            { name: '한복', icon: '👘', desc: '한국의 전통 의상.', color: 'bg-pink-600' },
+            { name: '김치', icon: '🌶️', desc: '한국의 대표적인 발효 음식.', color: 'bg-red-600' },
+            { name: '비빔밥', icon: '🍚', desc: '밥 위에 나물을 얹어 비벼 먹는 음식.', color: 'bg-orange-600' },
+            { name: '탈춤', icon: '🎭', desc: '탈을 쓰고 추는 전통 연희.', color: 'bg-purple-600' },
+            { name: '태극기', icon: '🇰🇷', desc: '대한민국의 국기.', color: 'bg-blue-700' },
+            { name: '궁궐', icon: '🏯', desc: '조선 시대 왕이 살던 큰 건축물.', color: 'bg-amber-700' },
+            { name: '붓글씨', icon: '🖋️', desc: '붓으로 쓰는 서예.', color: 'bg-gray-700' },
+            { name: '가야금', icon: '🎶', desc: '한국의 전통 현악기.', color: 'bg-green-600' },
         ];
 
         const FREE_AVATARS = [
@@ -100,7 +133,7 @@
         let playerAvatar = '😊';
         let gameStarted = false;
         let adminCleared = false;
-        let page = 'main'; // main, game, cards, ai, ranking, profile, selectNickname, selectAvatar
+        let page = 'main';
         let quiz = null;
         let feedback = null;
         let processing = false;
@@ -108,6 +141,9 @@
         let solvedQuizzes = new Set();
         let points = 0;
         let ownedAvatars = new Set(FREE_AVATARS);
+        let quizScore = 0;
+        let quizTotal = 0;
+        let currentQuizIndex = 0;
 
         // 더미 랭킹
         let rankingData = [
@@ -185,23 +221,21 @@
         // ============================================
         const showAdminLogin = () => {
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
             modal.innerHTML = `
-                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">🔐 어드민 메뉴</h2>
-                    <input type="password" id="admin-password" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4" placeholder="비밀번호 입력 (0000)" maxlength="4" />
+                <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4 border border-purple-500">
+                    <h2 class="text-2xl font-bold text-white mb-4">🔐 어드민 메뉴</h2>
+                    <input type="password" id="admin-password" class="w-full p-3 bg-white/20 border-2 border-purple-400 rounded-lg focus:border-purple-300 text-white placeholder-purple-200 mb-4" placeholder="비밀번호 입력 (0000)" maxlength="4" />
                     <div class="flex flex-col gap-3">
-                        <button onclick="verifyAdminPassword()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
-                        <button onclick="closeAdminLogin()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
+                        <button onclick="verifyAdminPassword()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
+                        <button onclick="closeAdminLogin()" class="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
             document.getElementById('admin-password').focus();
             document.getElementById('admin-password').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    verifyAdminPassword();
-                }
+                if (e.key === 'Enter') verifyAdminPassword();
             });
         };
 
@@ -218,20 +252,20 @@
 
         const showAdminSuccess = () => {
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
             modal.innerHTML = `
-                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4 border border-green-500">
                     <div class="text-6xl mb-4">✅</div>
-                    <h2 class="text-2xl font-bold text-green-600 mb-2">인증 성공!</h2>
-                    <p class="text-gray-600 mb-6">어드민 권한이 확인되었습니다.</p>
+                    <h2 class="text-2xl font-bold text-green-400 mb-2">인증 성공!</h2>
+                    <p class="text-purple-200 mb-6">어드민 권한이 확인되었습니다.</p>
                     <div class="flex flex-col gap-3">
-                        <button onclick="adminClearGame(); closeAdminMenus();" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                        <button onclick="adminClearGame(); closeAdminMenus();" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                             🎮 게임 즉시 클리어
                         </button>
-                        <button onclick="giveAdminPoints(); closeAdminMenus();" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                        <button onclick="giveAdminPoints(); closeAdminMenus();" class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                             💰 포인트 100 지급
                         </button>
-                        <button onclick="closeAdminMenus()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
+                        <button onclick="closeAdminMenus()" class="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
                     </div>
                 </div>
             `;
@@ -240,13 +274,13 @@
 
         const showAdminFailure = () => {
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
             modal.innerHTML = `
-                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4 border border-red-500">
                     <div class="text-6xl mb-4">❌</div>
-                    <h2 class="text-2xl font-bold text-red-600 mb-2">인증 실패</h2>
-                    <p class="text-gray-600 mb-6">비밀번호가 올바르지 않습니다.</p>
-                    <button onclick="closeAdminMenus()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
+                    <h2 class="text-2xl font-bold text-red-400 mb-2">인증 실패</h2>
+                    <p class="text-purple-200 mb-6">비밀번호가 올바르지 않습니다.</p>
+                    <button onclick="closeAdminMenus()" class="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -256,13 +290,13 @@
             points += 100;
             localStorage.setItem(`points_${userId}`, points.toString());
             const successModal = document.createElement('div');
-            successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            successModal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
             successModal.innerHTML = `
-                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4 border border-yellow-500">
                     <div class="text-6xl mb-4">💰</div>
-                    <h2 class="text-2xl font-bold text-yellow-600 mb-2">포인트 지급 완료!</h2>
-                    <p class="text-gray-600 mb-6">100 포인트가 지급되었습니다.</p>
-                    <button onclick="closeAdminMenus()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
+                    <h2 class="text-2xl font-bold text-yellow-400 mb-2">포인트 지급 완료!</h2>
+                    <p class="text-purple-200 mb-6">100 포인트가 지급되었습니다.</p>
+                    <button onclick="closeAdminMenus()" class="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
                 </div>
             `;
             document.body.appendChild(successModal);
@@ -506,31 +540,31 @@
         // ============================================
         const renderMain = () => {
             root.innerHTML = `
-                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-4">
-                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+                    <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border border-purple-500">
                         <div class="mb-6">
-                            <div class="text-6xl mb-4">🎮</div>
-                            <h1 class="text-4xl font-extrabold text-indigo-600 mb-2">
+                            <div class="text-6xl mb-4 animate-bounce">🎮</div>
+                            <h1 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
                                 K-Culture<br>Memory Master
                             </h1>
-                            <p class="text-gray-600">한국 문화 카드 맞추기 게임</p>
+                            <p class="text-purple-200">한국 문화 카드 맞추기 게임</p>
                         </div>
-                        <button onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition">
+                        <button onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition">
                             <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#fff" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.603-.015 2.898-.015 3.285 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
                             구글 계정으로 시작하기
                         </button>
-                        <button onclick="loginAsGuest()" class="w-full mt-3 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                        <button onclick="loginAsGuest()" class="w-full mt-3 flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                             </svg>
                             게스트로 시작하기
                         </button>
-                        <div class="mt-6 pt-6 border-t border-gray-200">
-                            <p class="text-sm text-gray-600 mb-3">📚 게임 방법</p>
-                            <div class="text-xs text-gray-500 space-y-1">
+                        <div class="mt-6 pt-6 border-t border-purple-500/50">
+                            <p class="text-sm text-purple-300 mb-3">📚 게임 방법</p>
+                            <div class="text-xs text-purple-200 space-y-1">
                                 <p>• 같은 K-Culture 카드를 찾아 맞추세요</p>
                                 <p>• AI 학습 정답 시 10포인트 획득</p>
-                                <p>• 유료 아바타는 50포인트!</p>
+                                <p>• 프리미엄 아바타는 50포인트!</p>
                             </div>
                         </div>
                     </div>
@@ -540,12 +574,12 @@
 
         const renderSelectNickname = () => {
             root.innerHTML = `
-                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-teal-100 p-4">
-                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-                        <h2 class="text-2xl font-bold text-teal-600 mb-4">📝 닉네임 설정</h2>
-                        <p class="text-gray-600 mb-6">다른 사람들이 볼 이름을 정해주세요</p>
-                        <input type="text" id="nickname-input" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 mb-6 text-center text-lg" placeholder="닉네임 입력 (최대 10자)" maxlength="10" />
-                        <button onclick="setNickname()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 p-4">
+                    <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border border-teal-500">
+                        <h2 class="text-2xl font-bold text-teal-300 mb-4">📝 닉네임 설정</h2>
+                        <p class="text-purple-200 mb-6">다른 사람들이 볼 이름을 정해주세요</p>
+                        <input type="text" id="nickname-input" class="w-full p-3 bg-white/20 border-2 border-teal-400 rounded-lg focus:border-teal-300 text-white placeholder-purple-200 mb-6 text-center text-lg" placeholder="닉네임 입력 (최대 10자)" maxlength="10" />
+                        <button onclick="setNickname()" class="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                             확인
                         </button>
                     </div>
@@ -559,19 +593,19 @@
 
         const renderSelectAvatar = () => {
             const grid = FREE_AVATARS.map(avatar => `
-                <button onclick="selectAvatar('${avatar}')" class="w-12 h-12 text-2xl rounded-full border-2 border-gray-300 hover:border-indigo-400 transition-all duration-200 ${playerAvatar === avatar ? 'profile-selected border-indigo-500' : ''}">
+                <button onclick="selectAvatar('${avatar}')" class="w-12 h-12 text-2xl rounded-full bg-white/20 hover:bg-white/30 border-2 ${playerAvatar === avatar ? 'border-purple-400 ring-4 ring-purple-500/50' : 'border-white/30'} transition-all duration-200">
                     ${avatar}
                 </button>
             `).join('');
             root.innerHTML = `
-                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 p-4">
-                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-                        <h2 class="text-2xl font-bold text-indigo-600 mb-4">🎉 ${playerName}님, 환영합니다!</h2>
-                        <p class="text-gray-600 mb-6">무료 아바타를 하나 선택하세요</p>
-                        <div class="grid grid-cols-8 gap-2 mb-6 p-3 bg-gray-50 rounded-lg">
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4">
+                    <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border border-indigo-500">
+                        <h2 class="text-2xl font-bold text-indigo-300 mb-4">🎉 ${playerName}님, 환영합니다!</h2>
+                        <p class="text-purple-200 mb-6">무료 아바타를 하나 선택하세요</p>
+                        <div class="grid grid-cols-8 gap-2 mb-6 p-3 bg-white/10 rounded-lg">
                             ${grid}
                         </div>
-                        <button onclick="selectAvatar('${playerAvatar}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                        <button onclick="selectAvatar('${playerAvatar}')" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                             선택 완료 → 게임 시작
                         </button>
                     </div>
@@ -591,8 +625,8 @@
                 const isOwned = ownedAvatars.has(av.icon);
                 const isSelected = playerAvatar === av.icon;
                 const btnClass = isOwned
-                    ? `bg-green-100 border-2 border-green-500 hover:bg-green-200 ${isSelected ? 'ring-4 ring-indigo-500' : ''}`
-                    : `bg-gray-100 border-2 border-gray-300 opacity-70 hover:opacity-100`;
+                    ? `bg-green-500/20 border-2 border-green-400 hover:bg-green-500/30 ${isSelected ? 'ring-4 ring-purple-500/50' : ''}`
+                    : `bg-white/10 border-2 border-white/30 opacity-70 hover:opacity-100`;
                 const action = isOwned
                     ? `selectAvatar('${av.icon}')`
                     : points >= av.price
@@ -609,46 +643,46 @@
                 }
                 
                 return `
-                    <div class="flex flex-col items-center p-2 rounded-lg ${isOwned ? 'bg-green-50' : av.price > 0 ? 'bg-purple-50' : 'bg-gray-50'}">
+                    <div class="flex flex-col items-center p-2 rounded-lg ${isOwned ? 'bg-green-500/10' : av.price > 0 ? 'bg-purple-500/10' : 'bg-white/5'}">
                         <div class="text-3xl mb-1 ${!isOwned && points < av.price ? 'opacity-50' : ''}">${av.icon}</div>
-                        ${av.price > 0 && !isOwned ? `<span class="text-xs text-purple-600 font-bold mb-1">⭐ ${av.price}P</span>` : ''}
-                        <button onclick="${action}" class="text-xs font-semibold px-3 py-1 rounded-full ${btnClass} transition-all duration-200" ${!isOwned && points < av.price ? 'disabled' : ''}>
+                        ${av.price > 0 && !isOwned ? `<span class="text-xs text-purple-300 font-bold mb-1">⭐ ${av.price}P</span>` : ''}
+                        <button onclick="${action}" class="text-xs font-semibold px-3 py-1 rounded-full ${btnClass} transition-all duration-200 ${isOwned ? 'text-green-300' : 'text-purple-200'}" ${!isOwned && points < av.price ? 'disabled' : ''}>
                             ${displayText}
                         </button>
                     </div>
                 `;
             }).join('');
             root.innerHTML = `
-                <div class="p-6 min-h-screen bg-indigo-50">
-                    <h1 class="text-3xl font-bold text-indigo-700 mb-2 text-center">👤 프로필 설정</h1>
-                    <div class="bg-white p-6 rounded-xl shadow-lg max-w-2xl mx-auto">
+                <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
+                    <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-4 text-center">👤 프로필 설정</h1>
+                    <div class="glass-effect-strong p-6 rounded-2xl shadow-2xl max-w-2xl mx-auto border border-purple-500">
                         <div class="text-center mb-6">
                             <div class="text-6xl mb-2">${playerAvatar}</div>
-                            <p class="font-bold text-xl text-gray-800">${playerName}</p>
-                            <p class="text-indigo-600 font-semibold text-lg mt-1">💰 포인트: <span id="point-display">${points}</span>P</p>
+                            <p class="font-bold text-xl text-white">${playerName}</p>
+                            <p class="text-purple-300 font-semibold text-lg mt-1">💰 포인트: <span id="point-display" class="text-yellow-400">${points}</span>P</p>
                         </div>
                         
                         <div class="mb-6">
-                            <h3 class="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
                                 <span>🎨</span> 아바타 컬렉션
                             </h3>
-                            <div class="bg-purple-50 p-3 rounded-lg mb-3">
-                                <p class="text-sm text-purple-700 font-semibold">⭐ 프리미엄 아바타는 50 포인트로 구매 가능!</p>
+                            <div class="bg-purple-500/20 p-3 rounded-lg mb-3 border border-purple-500/50">
+                                <p class="text-sm text-purple-200 font-semibold">⭐ 프리미엄 아바타는 50 포인트로 구매 가능!</p>
                             </div>
                             <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                                 ${avatarGrid}
                             </div>
                         </div>
                         
-                        <button onclick="navigate('game')" class="w-full mt-4 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">게임으로 돌아가기</button>
+                        <button onclick="navigate('game')" class="w-full mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">게임으로 돌아가기</button>
                     </div>
                 </div>
             `;
         };
 
-        const NavBtn = (label, target) => `
-            <button onclick="navigate('${target}')" class="bg-purple-500 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-purple-600 transition">
-                ${label}
+        const NavBtn = (label, target, icon) => `
+            <button onclick="navigate('${target}')" class="glass-effect-strong text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:bg-white/30 transition border border-purple-500/50 flex items-center gap-2">
+                ${icon} ${label}
             </button>
         `;
 
@@ -656,15 +690,30 @@
             const isFlip = flipped.includes(card.id) || matched.includes(card.id);
             const isMatch = matched.includes(card.id);
             const cursor = isMatch ? 'cursor-default' : 'cursor-pointer';
+            const cardNum = ITEMS.findIndex(item => item.name === card.name) + 1;
             return `
-                <div class="aspect-square perspective ${cursor}" onclick="clickCard(${card.id})">
+                <div class="aspect-square perspective ${cursor} card-hover" onclick="clickCard(${card.id})">
                     <div class="relative w-full h-full card-transition transform-3d ${isFlip ? 'flip' : ''}">
-                        <div class="absolute backface-hidden w-full h-full bg-indigo-500 rounded-lg shadow-xl border-4 border-indigo-700 flex flex-col items-center justify-center">
-                            <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
+                        <!-- 앞면 -->
+                        <div class="absolute backface-hidden w-full h-full glass-effect-strong rounded-2xl shadow-2xl border-2 border-purple-500 flex flex-col items-center justify-center p-4">
+                            <div class="absolute top-2 right-2 text-xs text-purple-300 font-bold">No.${cardNum}</div>
+                            <svg data-lucide="sparkles" class="w-10 h-10 text-yellow-300 animate-pulse mb-2"></svg>
+                            <span class="text-4xl mb-2">${card.icon}</span>
+                            <span class="text-sm font-bold text-white">${card.name}</span>
+                            <span class="text-xs text-purple-200 mt-2">클릭하여 뒤집기</span>
                         </div>
-                        <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-2 flip">
-                            <span class="text-2xl md:text-4xl">${card.icon}</span>
-                            <span class="text-xs md:text-sm font-semibold mt-1 text-gray-800 text-center">${card.name}</span>
+                        <!-- 뒷면 -->
+                        <div class="absolute backface-hidden w-full h-full bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-2xl border-4 ${card.color} border-opacity-50 flex flex-col p-3 flip">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-lg font-bold text-gray-800">${card.name}</span>
+                                <span class="text-xs px-2 py-1 ${card.color} text-white rounded-full">${card.icon}</span>
+                            </div>
+                            <div class="flex-1 flex items-center justify-center">
+                                <span class="text-5xl">${card.icon}</span>
+                            </div>
+                            <div class="mt-2 p-2 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border-l-4 border-blue-500">
+                                <p class="text-xs text-gray-700">${card.desc}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -673,27 +722,34 @@
 
         const renderGame = () => {
             const grid = cards.map(Card).join('');
+            const progress = matched.length / cards.length * 100;
             const modal = won ? `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in">
-                        <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 축하합니다! 🎉</h2>
-                        <div class="flex items-center justify-center gap-2 mb-2">
-                            <span class="text-2xl">${playerAvatar}</span>
-                            <p class="text-lg text-gray-700"><strong>${playerName || '플레이어'}</strong>님!</p>
+                <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+                    <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl text-center pop-in max-w-md border border-green-500">
+                        <h2 class="text-4xl font-extrabold text-green-400 mb-4">🎉 축하합니다! 🎉</h2>
+                        <div class="flex items-center justify-center gap-3 mb-4">
+                            <span class="text-4xl">${playerAvatar}</span>
+                            <div class="text-left">
+                                <p class="text-xl text-white font-bold">${playerName || '플레이어'}님!</p>
+                                <p class="text-purple-200 text-sm">게임 클리어!</p>
+                            </div>
                         </div>
-                        <p class="text-lg text-gray-700 mb-6"><strong>${moves}번</strong> 만에 모든 카드를 맞췄습니다!</p>
+                        <div class="bg-white/10 rounded-lg p-4 mb-6">
+                            <p class="text-3xl font-bold text-yellow-400 mb-2">${moves}번</p>
+                            <p class="text-purple-200">만에 모든 카드를 맞췄습니다!</p>
+                        </div>
                         ${
                             adminCleared
-                            ? `<div class="mb-4 p-3 rounded bg-yellow-100 text-yellow-900 font-bold">
-                                    어드민 권한으로 즉시 클리어되었습니다!
+                            ? `<div class="mb-4 p-3 rounded-lg bg-yellow-500/20 border border-yellow-500 text-yellow-300 font-bold text-sm">
+                                    ⚡ 어드민 권한으로 즉시 클리어되었습니다!
                                 </div>`
                             : ''
                         }
                         <div class="flex gap-3 justify-center">
-                            <button onclick="startGame()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
+                            <button onclick="startGame()" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
                                 다시하기
                             </button>
-                            <button onclick="navigate('ranking')" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
+                            <button onclick="navigate('ranking')" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
                                 랭킹 보기
                             </button>
                         </div>
@@ -701,41 +757,65 @@
                 </div>
             ` : '';
             root.innerHTML = `
-                <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
-                    <div class="w-full max-w-xl flex justify-between items-center mb-4">
-                        <h1 class="text-3xl font-extrabold text-indigo-600">K-Culture Memory</h1>
-                        <div class="text-right flex items-center gap-2">
-                            <div>
-                                <p class="text-sm text-gray-600">플레이어</p>
-                                <p class="text-lg font-bold text-indigo-600">${playerName || '익명'}</p>
-                            </div>
-                            <span class="text-2xl">${playerAvatar}</span>
-                            <button onclick="navigate('profile')" class="text-sm text-indigo-600 hover:underline ml-2">프로필</button>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mb-6">
-                        <div class="flex justify-between items-center mb-4 border-b pb-3">
-                            <div>
-                                <span class="text-xl font-bold text-gray-700">시도: <span class="text-indigo-500">${moves}</span></span>
-                                <span class="text-sm text-gray-500 ml-3">남은 쌍: ${8 - matched.length / 2}</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="startGame()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition">
-                                    재시작
-                                </button>
-                                <button onclick="showAdminLogin()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-full shadow-lg transition" title="어드민 메뉴">
-                                    치트
-                                </button>
+                <div class="p-4 min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+                    <div class="max-w-6xl mx-auto">
+                        <!-- 헤더 -->
+                        <div class="glass-effect-strong p-4 rounded-2xl mb-4 border border-purple-500/50">
+                            <div class="flex justify-between items-center">
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">K-Culture Memory</h1>
+                                <div class="flex items-center gap-3">
+                                    <div class="text-right">
+                                        <p class="text-xs text-purple-300">플레이어</p>
+                                        <p class="text-sm md:text-lg font-bold text-white">${playerName || '익명'}</p>
+                                    </div>
+                                    <span class="text-3xl">${playerAvatar}</span>
+                                    <button onclick="navigate('profile')" class="text-xs md:text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-full transition">프로필</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-4 gap-3 md:gap-4">${grid}</div>
+
+                        <!-- 게임 정보 -->
+                        <div class="glass-effect-strong p-6 rounded-2xl shadow-2xl mb-6 border border-purple-500/50">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="flex gap-4">
+                                    <div class="text-center">
+                                        <p class="text-xs text-purple-300 mb-1">시도 횟수</p>
+                                        <p class="text-2xl font-bold text-yellow-400">${moves}</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-xs text-purple-300 mb-1">남은 쌍</p>
+                                        <p class="text-2xl font-bold text-green-400">${8 - matched.length / 2}</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="startGame()" class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition">
+                                        재시작
+                                    </button>
+                                    <button onclick="showAdminLogin()" class="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-3 rounded-full shadow-lg transition" title="어드민 메뉴">
+                                        <svg data-lucide="settings" class="w-4 h-4"></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- 진행 바 -->
+                            <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+                                <div class="progress-bar bg-gradient-to-r from-green-500 to-emerald-600 h-full rounded-full" style="width: ${progress}%"></div>
+                            </div>
+                            <p class="text-xs text-purple-200 text-center mt-2">${Math.round(progress)}% 완료</p>
+                        </div>
+
+                        <!-- 카드 그리드 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                            ${grid}
+                        </div>
+
+                        <!-- 네비게이션 -->
+                        <div class="flex flex-wrap justify-center gap-3">
+                            ${NavBtn('📚 카드 도감', 'cards', '')}
+                            ${NavBtn('🎓 AI 학습', 'ai', '')}
+                            ${NavBtn('🏆 랭킹', 'ranking', '')}
+                        </div>
                     </div>
                     ${modal}
-                    <div class="mt-6 flex flex-wrap justify-center gap-3">
-                        ${NavBtn('카드 도감', 'cards')}
-                        ${NavBtn('AI 학습', 'ai')}
-                        ${NavBtn('랭킹', 'ranking')}
-                    </div>
                 </div>
             `;
         };
@@ -744,46 +824,54 @@
             const list = ITEMS.map((item, i) => {
                 const isUnlocked = unlockedCards.has(item.name);
                 const isSelected = selectedCard?.name === item.name;
+                const cardNum = i + 1;
                 if (!isUnlocked) {
                     return `
-                        <div class="bg-gray-200 p-4 rounded-xl shadow-lg border-2 border-gray-400 relative">
-                            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl">
-                                <svg data-lucide="lock" class="w-12 h-12 text-white"></svg>
+                        <div class="glass-effect p-6 rounded-2xl shadow-lg border-2 border-gray-600 relative h-64 card-hover">
+                            <div class="absolute top-2 right-2 text-xs text-gray-400 font-bold">No.${cardNum}</div>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 rounded-2xl">
+                                <svg data-lucide="lock" class="w-16 h-16 text-gray-400 mb-2"></svg>
+                                <p class="text-gray-400 font-bold">잠김</p>
                             </div>
-                            <div class="text-4xl text-center mb-2 opacity-30">${item.icon}</div>
-                            <h3 class="text-lg font-bold text-gray-400">???</h3>
-                            <p class="text-sm text-gray-400">잠김</p>
+                            <div class="text-5xl text-center mb-3 opacity-20">${item.icon}</div>
+                            <h3 class="text-lg font-bold text-gray-500">???</h3>
                         </div>
                     `;
                 }
                 return `
-                    <div onclick="selectCard(${i})" class="bg-white p-4 rounded-xl shadow-lg border-2 ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-yellow-400'} hover:shadow-xl transition cursor-pointer">
-                        <div class="text-4xl text-center mb-2">${item.icon}</div>
-                        <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
-                        <p class="text-sm text-gray-600">${item.desc}</p>
+                    <div onclick="selectCard(${i})" class="glass-effect-strong p-6 rounded-2xl shadow-lg border-2 ${isSelected ? 'border-purple-400 ring-4 ring-purple-500/50 pulse-glow' : 'border-yellow-500'} hover:shadow-2xl transition cursor-pointer h-64 card-hover relative">
+                        <div class="absolute top-2 right-2 text-xs text-purple-300 font-bold">No.${cardNum}</div>
+                        <div class="text-5xl text-center mb-3">${item.icon}</div>
+                        <h3 class="text-xl font-bold text-white mb-2">${item.name}</h3>
+                        <span class="inline-block px-3 py-1 ${item.color} text-white text-xs rounded-full mb-2">${item.icon} 문화</span>
+                        <p class="text-sm text-purple-200">${item.desc}</p>
                     </div>
                 `;
             }).join('');
             const detailView = selectedCard ? `
-                <div class="bg-white p-6 rounded-xl shadow-2xl border-2 border-indigo-500 max-w-lg mx-auto mt-6">
-                    <div class="text-6xl text-center mb-4">${selectedCard.icon}</div>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">${selectedCard.name}</h2>
-                    <p class="text-gray-600 mb-4 text-center">${selectedCard.desc}</p>
-                    <button onclick="learnCard()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition flex items-center justify-center gap-2">
-                        <svg data-lucide="graduation-cap" class="w-5 h-5"></svg>
+                <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl border-2 border-purple-500 max-w-lg mx-auto mt-8">
+                    <div class="text-7xl text-center mb-4">${selectedCard.icon}</div>
+                    <h2 class="text-3xl font-bold text-white mb-2 text-center">${selectedCard.name}</h2>
+                    <span class="inline-block px-4 py-2 ${selectedCard.color} text-white text-sm rounded-full mb-4 mx-auto block w-fit">${selectedCard.icon} 한국 문화</span>
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg mb-6">
+                        <p class="text-gray-800 text-center">${selectedCard.desc}</p>
+                    </div>
+                    <button onclick="learnCard()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition flex items-center justify-center gap-2">
+                        <svg data-lucide="graduation-cap" class="w-6 h-6"></svg>
                         AI 학습 시작
                     </button>
                 </div>
             ` : '';
             root.innerHTML = `
-                <div class="p-6 min-h-screen bg-yellow-50">
-                    <h1 class="text-3xl font-bold text-yellow-700 mb-2 text-center">📚 카드 도감</h1>
-                    <p class="text-center text-gray-600 mb-6">게임에서 맞춘 카드만 확인할 수 있습니다 (${unlockedCards.size}/${ITEMS.length})</p>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-yellow-900 to-slate-900">
+                    <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 mb-2 text-center">📚 카드 도감</h1>
+                    <p class="text-center text-purple-200 mb-8">게임에서 맞춘 카드만 확인할 수 있습니다 (${unlockedCards.size}/${ITEMS.length})</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-8">
                         ${list}
                     </div>
                     ${detailView}
-                    <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto">
+                    <button onclick="navigate('game')" class="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
+                        <svg data-lucide="arrow-left" class="w-5 h-5"></svg>
                         게임으로
                     </button>
                 </div>
@@ -795,20 +883,24 @@
             const unsolvedQuizzes = getUnsolvedQuizzes();
             const totalQuizzes = unlockedCards.size * 2;
             const solvedCount = solvedQuizzes.size;
+            const progressPercent = totalQuizzes > 0 ? (solvedCount / totalQuizzes * 100) : 0;
+            
             if (unsolvedQuizzes.length === 0 && unlockedCards.size > 0) {
                 root.innerHTML = `
-                    <div class="p-6 min-h-screen bg-blue-50">
-                        <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
-                            <div class="text-6xl mb-4">🎉</div>
-                            <h2 class="text-2xl font-bold text-green-600 mb-4">축하합니다!</h2>
-                            <p class="text-lg text-gray-700 mb-6">모든 카드에 대한 문제를 다 풀었습니다!<br>(총 ${totalQuizzes}개 문제 완료)</p>
-                            <p class="text-md text-gray-600 mb-6">다시 공부하시겠습니까?</p>
+                    <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+                        <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-xl text-center border border-green-500">
+                            <div class="text-7xl mb-6">🎉</div>
+                            <h2 class="text-3xl font-bold text-green-400 mb-4">완벽합니다!</h2>
+                            <div class="bg-green-500/20 rounded-lg p-4 mb-6 border border-green-500">
+                                <p class="text-lg text-white mb-2">모든 카드에 대한 문제를 풀었습니다!</p>
+                                <p class="text-yellow-400 font-bold text-2xl">${totalQuizzes}개 문제 완료</p>
+                            </div>
+                            <p class="text-purple-200 mb-6">다시 공부하시겠습니까?</p>
                             <div class="flex gap-3 justify-center">
-                                <button onclick="resetQuizzes()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                                <button onclick="resetQuizzes()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                                     처음부터 다시
                                 </button>
-                                <button onclick="navigate('game')" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                                <button onclick="navigate('game')" class="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                                     게임으로
                                 </button>
                             </div>
@@ -819,13 +911,12 @@
             }
             if (unlockedCards.size === 0) {
                 root.innerHTML = `
-                    <div class="p-6 min-h-screen bg-blue-50">
-                        <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
-                            <div class="text-6xl mb-4">🔒</div>
-                            <h2 class="text-2xl font-bold text-gray-700 mb-4">학습할 카드가 없습니다</h2>
-                            <p class="text-lg text-gray-600 mb-6">게임에서 카드를 맞춰 잠금 해제한 후<br>AI 학습을 시작할 수 있습니다!</p>
-                            <button onclick="navigate('game')" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                    <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+                        <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-xl text-center border border-red-500">
+                            <div class="text-7xl mb-6">🔒</div>
+                            <h2 class="text-3xl font-bold text-white mb-4">학습할 카드가 없습니다</h2>
+                            <p class="text-lg text-purple-200 mb-8">게임에서 카드를 맞춰 잠금 해제한 후<br>AI 학습을 시작할 수 있습니다!</p>
+                            <button onclick="navigate('game')" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition">
                                 게임 시작하기
                             </button>
                         </div>
@@ -834,49 +925,68 @@
                 return;
             }
             const quizBlock = quiz ? `
-                <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400 mb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-2xl">${quiz.item.icon}</span>
-                        <span class="text-sm font-semibold text-indigo-600">
+                <div class="p-5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border-l-4 border-purple-400 mb-6">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="text-3xl">${quiz.item.icon}</span>
+                        <span class="text-sm font-semibold text-purple-300 px-3 py-1 bg-white/10 rounded-full">
                             ${quiz.type === 'fill' ? '📝 빈칸 채우기' : '✏️ 정보 쓰기'}
                         </span>
                     </div>
-                    <p class="text-md text-gray-700 whitespace-pre-line">${quiz.question}</p>
+                    <p class="text-lg text-white whitespace-pre-line">${quiz.question}</p>
                 </div>
                 ${quiz.type === 'fill' ? `
-                    <input type="text" id="answer" value="${answerVal}" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4" placeholder="정답 입력 (예: 한복)" />
+                    <input type="text" id="answer" value="${answerVal}" class="w-full p-4 bg-white/20 border-2 border-purple-400 rounded-lg focus:border-purple-300 text-white placeholder-purple-200 mb-4 text-lg" placeholder="정답 입력 (예: 한복)" />
                 ` : `
-                    <textarea id="answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4 min-h-24" placeholder="자유롭게 설명해주세요 (최소 5글자)">${answerVal}</textarea>
+                    <textarea id="answer" class="w-full p-4 bg-white/20 border-2 border-purple-400 rounded-lg focus:border-purple-300 text-white placeholder-purple-200 mb-4 min-h-32 text-lg" placeholder="자유롭게 설명해주세요 (최소 5글자)">${answerVal}</textarea>
                 `}
-                <button onclick="submitAnswer()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
+                <button onclick="submitAnswer()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
                     정답 확인
                 </button>
             ` : '';
             const feedbackBlock = feedback ? `
-                <div class="p-4 rounded-lg font-semibold mt-4 whitespace-pre-line ${feedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                <div class="p-5 rounded-lg font-semibold mt-6 whitespace-pre-line border-2 ${feedback.type === 'correct' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700'}">
                     ${feedback.msg}
                 </div>
             ` : '';
             root.innerHTML = `
-                <div class="p-6 min-h-screen bg-blue-50">
-                    <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto">
-                        <div class="flex justify-between items-center mb-4">
-                            <p class="text-lg font-semibold text-gray-800">
-                                <span class="text-indigo-500">하츄핑:</span> K-Culture 퀴즈를 풀어볼까요?
-                            </p>
-                            <span class="text-sm font-semibold text-indigo-600">
-                                ${solvedCount}/${totalQuizzes} 완료
-                            </span>
+                <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+                    <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 mb-2 text-center">🎓 AI 학습 센터</h1>
+                    <p class="text-center text-purple-200 mb-8">하츄핑과 함께 K-Culture를 배워봐요!</p>
+                    
+                    <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-auto border border-blue-500">
+                        <!-- 진행 상황 -->
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-3">
+                                <span class="text-4xl">🎓</span>
+                                <div>
+                                    <p class="text-lg font-semibold text-white">
+                                        <span class="text-blue-300">하츄핑:</span> K-Culture 퀴즈
+                                    </p>
+                                    <p class="text-xs text-purple-300">한국 문화를 배워봐요!</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm font-semibold text-yellow-400 bg-yellow-500/20 px-3 py-1 rounded-full">
+                                    ${solvedCount}/${totalQuizzes} 완료
+                                </span>
+                            </div>
                         </div>
-                        ${processing && !quiz ? '<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6"></svg> 퀴즈 생성 중...</div>' : ''}
+                        
+                        <!-- 진행 바 -->
+                        <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden mb-8">
+                            <div class="progress-bar bg-gradient-to-r from-blue-500 to-cyan-600 h-full rounded-full" style="width: ${progressPercent}%"></div>
+                        </div>
+                        
+                        ${processing && !quiz ? '<div class="text-center text-blue-400 p-8"><svg data-lucide="loader-2" class="animate-spin inline w-8 h-8 mb-2"></svg><p>퀴즈 생성 중...</p></div>' : ''}
                         ${!processing || quiz ? quizBlock : ''}
                         ${feedbackBlock}
-                        <button onclick="makeQuiz()" class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
-                            ${quiz ? '다음 문제' : '퀴즈 시작'}
+                        <button onclick="makeQuiz()" class="w-full mt-6 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-4 rounded-lg shadow-lg transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
+                            ${quiz ? '다음 문제 →' : '퀴즈 시작하기'}
                         </button>
                     </div>
-                    <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto">
+                    
+                    <button onclick="navigate('game')" class="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
+                        <svg data-lucide="arrow-left" class="w-5 h-5"></svg>
                         게임으로
                     </button>
                 </div>
@@ -886,9 +996,9 @@
         const renderRanking = (data, loading) => {
             let content = '';
             if (loading) {
-                content = '<div class="p-4 text-center text-gray-600"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6 mr-2"></svg>로딩 중...</div>';
+                content = '<div class="p-8 text-center text-purple-300"><svg data-lucide="loader-2" class="animate-spin inline w-8 h-8 mr-2"></svg>로딩 중...</div>';
             } else if (data.length === 0) {
-                content = '<p class="text-center text-gray-500 p-4">아직 기록이 없습니다!</p>';
+                content = '<p class="text-center text-purple-300 p-8">아직 기록이 없습니다!</p>';
             } else {
                 const sortedData = [...data].sort((a, b) => {
                     if (a.moves === b.moves) return new Date(a.time) - new Date(b.time);
@@ -897,43 +1007,61 @@
                 content = sortedData.map((r, i) => {
                     const isMe = r.uid === userId;
                     const medalEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                    const rankColors = i === 0 ? 'from-yellow-500/20 to-orange-500/20 border-yellow-500' : 
+                                       i === 1 ? 'from-gray-400/20 to-gray-500/20 border-gray-400' :
+                                       i === 2 ? 'from-amber-600/20 to-amber-700/20 border-amber-600' : '';
                     return `
-                        <div class="flex justify-between items-center p-3 rounded-lg transition ${isMe ? 'bg-yellow-100 font-bold border-2 border-yellow-400 shadow-md' : 'bg-gray-50 hover:bg-gray-100'}">
-                            <span class="text-xl font-bold ${i < 3 ? 'text-yellow-600' : 'text-gray-700'} w-12">
-                                ${medalEmoji || `${i + 1}.`}
-                            </span>
-                            <div class="flex-1 ml-2 flex items-center gap-2">
-                                <span class="text-xl">${r.avatar || '😊'}</span>
-                                <span class="text-sm truncate">
-                                    <span class="${isMe ? 'text-indigo-700' : 'text-gray-800'}">${r.name || '익명'}</span>
-                                    ${isMe ? ' <span class="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full">나</span>' : ''}
+                        <div class="flex justify-between items-center p-4 rounded-lg transition ${isMe ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border-2 border-purple-400 shadow-lg' : i < 3 ? `bg-gradient-to-r ${rankColors} border-2` : 'glass-effect hover:bg-white/20'} mb-2">
+                            <div class="flex items-center gap-4 flex-1">
+                                <span class="text-2xl font-bold ${i < 3 ? 'text-yellow-400' : 'text-purple-300'} w-12 text-center">
+                                    ${medalEmoji || `${i + 1}.`}
                                 </span>
+                                <span class="text-3xl">${r.avatar || '😊'}</span>
+                                <div class="flex-1">
+                                    <span class="text-sm md:text-base font-semibold ${isMe ? 'text-yellow-300' : 'text-white'}">
+                                        ${r.name || '익명'}
+                                    </span>
+                                    ${isMe ? ' <span class="text-xs bg-purple-600 text-white px-2 py-1 rounded-full ml-2">나</span>' : ''}
+                                </div>
                             </div>
-                            <span class="text-lg font-mono ${isMe ? 'text-indigo-600' : 'text-gray-600'} font-bold">
-                                ${r.moves}회
-                            </span>
+                            <div class="text-right">
+                                <span class="text-xl md:text-2xl font-mono ${isMe ? 'text-yellow-400' : i < 3 ? 'text-yellow-300' : 'text-purple-300'} font-bold">
+                                    ${r.moves}
+                                </span>
+                                <span class="text-xs text-purple-300 block">회</span>
+                            </div>
                         </div>
                     `;
                 }).join('');
             }
             root.innerHTML = `
-                <div class="p-6 min-h-screen bg-purple-50">
-                    <h1 class="text-3xl font-bold text-purple-700 mb-2 text-center">🏆 명예의 전당</h1>
-                    <p class="text-center text-gray-600 mb-6">최소 시도 횟수로 클리어한 랭킹</p>
-                    <div class="p-6 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
-                        <h2 class="text-xl font-bold mb-4 text-center text-indigo-700 border-b pb-2 flex items-center justify-center gap-2">
-                            <svg data-lucide="trophy" class="w-5 h-5"></svg>
-                            TOP 20
-                        </h2>
-                        <div class="space-y-2 max-h-96 overflow-y-auto">${content}</div>
+                <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+                    <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2 text-center">🏆 명예의 전당</h1>
+                    <p class="text-center text-purple-200 mb-8">최소 시도 횟수로 클리어한 랭킹</p>
+                    
+                    <div class="glass-effect-strong p-6 rounded-2xl shadow-2xl w-full max-w-2xl mx-auto border border-purple-500">
+                        <div class="flex items-center justify-center gap-2 mb-6 pb-4 border-b border-purple-500/50">
+                            <svg data-lucide="trophy" class="w-6 h-6 text-yellow-400"></svg>
+                            <h2 class="text-2xl font-bold text-white">TOP 20</h2>
+                        </div>
+                        <div class="space-y-0 max-h-96 overflow-y-auto pr-2">
+                            ${content}
+                        </div>
                         ${playerName ? `
-                            <div class="mt-4 pt-4 border-t border-gray-200 text-center flex items-center justify-center gap-2">
-                                <span class="text-xl">${playerAvatar}</span>
-                                <p class="text-xs text-gray-500">현재 플레이어: <span class="font-bold text-indigo-600">${playerName}</span></p>
+                            <div class="mt-6 pt-6 border-t border-purple-500/50 text-center">
+                                <div class="flex items-center justify-center gap-3 glass-effect p-4 rounded-lg">
+                                    <span class="text-3xl">${playerAvatar}</span>
+                                    <div class="text-left">
+                                        <p class="text-xs text-purple-300">현재 플레이어</p>
+                                        <p class="font-bold text-white">${playerName}</p>
+                                    </div>
+                                </div>
                             </div>
                         ` : ''}
                     </div>
-                    <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
+                    
+                    <button onclick="navigate('game')" class="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
+                        <svg data-lucide="arrow-left" class="w-5 h-5"></svg>
                         게임으로
                     </button>
                 </div>
@@ -984,7 +1112,6 @@
                 } else {
                     userId = crypto.randomUUID();
                 }
-                // 로컬 데이터 로드
                 playerName = localStorage.getItem(`playerName_${userId}`) || '';
                 playerAvatar = localStorage.getItem(`playerAvatar_${userId}`) || '😊';
                 points = parseInt(localStorage.getItem(`points_${userId}`)) || 0;
