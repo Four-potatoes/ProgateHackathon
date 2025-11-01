@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Everything Memory Game</title>
+    <link rel="icon" href="../favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 카드 플립 애니메이션 */
+        .perspective { perspective: 1000px; }
+        .transform-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .flip { transform: rotateY(180deg); }
+        .card-transition { transition: transform 0.6s; }
+
+        /* 팝업 애니메이션 */
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in { animation: pop 0.3s ease-out forwards; }
+
+        /* 잠금 효과 */
+        .locked { filter: grayscale(100%) brightness(0.6); pointer-events: none; }
+
+        /* 중앙 정렬 */
+        .text-center { text-align: center; }
+        .flex-center { display: flex; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+
+    <div id="app" class="min-h-screen">
+        <!-- 로딩 화면 -->
+        <div class="flex flex-col justify-center items-center h-screen">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
+            <p class="mt-4 text-xl text-gray-700">로딩 중...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // ===================================
+        // 데이터 로드
+        // ===================================
+        let STAGES_DATA = null;
+        let currentStage = 1;
+        let unlockedStages = [1]; // 1단계는 기본 해제
+
+        async function loadData() {
+            try {
+                const response = await fetch('../data/stages.json');
+                STAGES_DATA = await response.json();
+
+                // 로컬스토리지에서 진행도 불러오기
+                const saved = localStorage.getItem('game_progress');
+                if (saved) {
+                    const progress = JSON.parse(saved);
+                    unlockedStages = progress.unlockedStages || [1];
+                    currentStage = progress.currentStage || 1;
+                }
+            } catch (error) {
+                console.error('데이터 로드 실패:', error);
+            }
+        }
+
+        // ===================================
+        // 게임 상태
+        // ===================================
+        let cards = [];
+        let flipped = [];
+        let matched = [];
+        let moves = 0;
+        let isWon = false;
+        let canClick = true;
+        let currentPage = 'stages'; // stages, game, collection
+
+        const appContainer = document.getElementById('app');
+
+        // ===================================
+        // 유틸리티 함수
+        // ===================================
+        const shuffleArray = (array) => {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        };
+
+        const saveProgress = () => {
+            localStorage.setItem('game_progress', JSON.stringify({
+                unlockedStages,
+                currentStage
+            }));
+        };
+
+        const goToPage = (page) => {
+            currentPage = page;
+            render();
+        };
+
+        // ===================================
+        // 게임 로직
+        // ===================================
+        const initializeGame = (stageId) => {
+            currentStage = stageId;
+            const stage = STAGES_DATA.stages.find(s => s.id === stageId);
+            if (!stage) return;
+
+            const items = stage.items;
+            const pairs = [...items, ...items].map((item, index) => ({
+                ...item,
+                id: index,
+                pairId: item.idx
+            }));
+
+            cards = shuffleArray(pairs);
+            flipped = [];
+            matched = [];
+            moves = 0;
+            isWon = false;
+            canClick = true;
+
+            currentPage = 'game';
+            renderGame();
+        };
+
+        const handleCardClick = (cardId) => {
+            if (!canClick || flipped.length === 2 || flipped.includes(cardId) || matched.includes(cardId) || isWon) {
+                return;
+            }
+
+            flipped.push(cardId);
+            renderGame();
+
+            if (flipped.length === 2) {
+                canClick = false;
+                moves++;
+                renderGame();
+
+                const [firstId, secondId] = flipped;
+                const card1 = cards.find(c => c.id === firstId);
+                const card2 = cards.find(c => c.id === secondId);
+
+                if (card1 && card2 && card1.pairId === card2.pairId) {
+                    matched.push(firstId, secondId);
+                    flipped = [];
+                    canClick = true;
+
+                    if (matched.length === cards.length) {
+                        isWon = true;
+
+                        // 다음 스테이지 잠금 해제
+                        if (currentStage < 3 && !unlockedStages.includes(currentStage + 1)) {
+                            unlockedStages.push(currentStage + 1);
+                            saveProgress();
+                        }
+                    }
+                    renderGame();
+                } else {
+                    setTimeout(() => {
+                        flipped = [];
+                        canClick = true;
+                        renderGame();
+                    }, 1000);
+                }
+            }
+        };
+
+        // ===================================
+        // 렌더링 함수
+        // ===================================
+        const renderStages = () => {
+            const stagesHtml = STAGES_DATA.stages.map(stage => {
+                const isUnlocked = unlockedStages.includes(stage.id);
+                const isCompleted = unlockedStages.includes(stage.id + 1) || (stage.id === 3 && unlockedStages.includes(3));
+
+                return `
+                    <div class="relative ${isUnlocked ? '' : 'locked'} bg-white rounded-2xl shadow-xl p-8 hover:shadow-2xl transition-all duration-300">
+                        ${!isUnlocked ? '<div class="absolute top-4 right-4 w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">LOCK</div>' : ''}
+                        ${isCompleted ? '<div class="absolute top-4 right-4 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">OK</div>' : ''}
+
+                        <div class="text-center mb-6">
+                            <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage ${stage.id}</h2>
+                            <p class="text-xl text-gray-600">${stage.name}</p>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-2 mb-6">
+                            ${stage.items.slice(0, 8).map(item => `
+                                <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                    <img src="../assets/img/${item.img}" alt="${item.title}" class="w-full h-full object-cover">
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <button
+                            onclick="window.initializeGame(${stage.id})"
+                            class="w-full py-3 px-6 rounded-lg font-bold text-white transition-all duration-300 ${
+                                isUnlocked
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                                    : 'bg-gray-400 cursor-not-allowed'
+                            }"
+                            ${!isUnlocked ? 'disabled' : ''}
+                        >
+                            ${isUnlocked ? '게임 시작' : '잠금'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            appContainer.innerHTML = `
+                <div class="min-h-screen p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-12">
+                            <h1 class="text-5xl font-bold text-gray-800 mb-4">K-Everything Memory Game</h1>
+                            <p class="text-xl text-gray-600">한국 문화재부터 음식, 영화까지 단계별로 도전해보세요</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                            ${stagesHtml}
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('collection')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-300"
+                            >
+                                내 컬렉션 보기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderCard = (card) => {
+            const isFlipped = flipped.includes(card.id) || matched.includes(card.id);
+            const isMatched = matched.includes(card.id);
+
+            return `
+                <div
+                    class="perspective cursor-pointer"
+                    onclick="window.handleCardClick(${card.id})"
+                >
+                    <div class="relative w-full aspect-square card-transition transform-3d ${isFlipped ? 'flip' : ''}">
+                        <!-- 카드 뒷면 -->
+                        <div class="absolute w-full h-full backface-hidden bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg flex items-center justify-center">
+                            <div class="text-6xl text-white">?</div>
+                        </div>
+
+                        <!-- 카드 앞면 -->
+                        <div class="absolute w-full h-full backface-hidden flip bg-white rounded-xl shadow-lg overflow-hidden">
+                            <img src="../assets/img/${card.img}" alt="${card.title}" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderGame = () => {
+            const stage = STAGES_DATA.stages.find(s => s.id === currentStage);
+            const totalPairs = cards.length / 2;
+            const matchedPairs = matched.length / 2;
+
+            const cardGrid = cards.map(renderCard).join('');
+
+            let winModal = '';
+            if (isWon) {
+                const nextStage = currentStage + 1;
+                const hasNext = nextStage <= 3;
+
+                winModal = `
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-md">
+                            <h2 class="text-3xl font-bold text-green-600 mb-4">완료!</h2>
+                            <p class="text-xl text-gray-700 mb-2">시도 횟수: ${moves}회</p>
+                            <p class="text-lg text-gray-600 mb-6">${stage.name} 단계를 클리어했습니다</p>
+
+                            ${hasNext ? `
+                                <button
+                                    onclick="window.initializeGame(${nextStage})"
+                                    class="w-full mb-3 py-3 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                                >
+                                    다음 단계로
+                                </button>
+                            ` : `
+                                <p class="text-lg font-bold text-purple-600 mb-4">모든 단계를 완료했습니다!</p>
+                            `}
+
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="w-full py-3 px-6 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            appContainer.innerHTML = `
+                <div class="min-h-screen p-4">
+                    <div class="max-w-4xl mx-auto">
+                        <!-- 헤더 -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <button
+                                    onclick="window.goToPage('stages')"
+                                    class="py-2 px-4 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
+                                >
+                                    ← 돌아가기
+                                </button>
+
+                                <div class="text-center">
+                                    <h2 class="text-2xl font-bold text-gray-800">Stage ${currentStage}: ${stage.name}</h2>
+                                </div>
+
+                                <button
+                                    onclick="window.initializeGame(${currentStage})"
+                                    class="py-2 px-4 rounded-lg font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 transition-all duration-300"
+                                >
+                                    다시하기
+                                </button>
+                            </div>
+
+                            <div class="flex justify-center gap-8 text-center">
+                                <div>
+                                    <p class="text-sm text-gray-600">시도 횟수</p>
+                                    <p class="text-2xl font-bold text-purple-600">${moves}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">진행도</p>
+                                    <p class="text-2xl font-bold text-pink-600">${matchedPairs} / ${totalPairs}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 카드 그리드 -->
+                        <div class="grid grid-cols-4 gap-4">
+                            ${cardGrid}
+                        </div>
+                    </div>
+                </div>
+
+                ${winModal}
+            `;
+        };
+
+        const renderCollection = () => {
+            const allItems = STAGES_DATA.stages.flatMap(stage =>
+                stage.items.map(item => ({
+                    ...item,
+                    stageName: stage.name,
+                    stageId: stage.id,
+                    isUnlocked: unlockedStages.includes(stage.id)
+                }))
+            );
+
+            const itemsHtml = allItems.map(item => `
+                <div class="${item.isUnlocked ? '' : 'locked'} bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+                    <div class="aspect-square overflow-hidden">
+                        <img src="../assets/img/${item.img}" alt="${item.title}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-lg text-gray-800 mb-1">${item.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${item.stageName}</p>
+                        <p class="text-xs text-gray-500">${item.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            appContainer.innerHTML = `
+                <div class="min-h-screen p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-800 mb-4">내 컬렉션</h1>
+                            <p class="text-lg text-gray-600">스테이지를 클리어하면 해당 항목이 잠금 해제됩니다</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                            ${itemsHtml}
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // ===================================
+        // 마스터 렌더 함수
+        // ===================================
+        const render = () => {
+            switch (currentPage) {
+                case 'stages':
+                    renderStages();
+                    break;
+                case 'game':
+                    renderGame();
+                    break;
+                case 'collection':
+                    renderCollection();
+                    break;
+                default:
+                    appContainer.innerHTML = '<h1 class="text-center text-red-500 mt-10">페이지 오류</h1>';
+            }
+        };
+
+        // ===================================
+        // 초기화
+        // ===================================
+        async function init() {
+            await loadData();
+            currentPage = 'stages';
+            render();
+        }
+
+        // 전역 함수로 내보내기
+        window.initializeGame = initializeGame;
+        window.handleCardClick = handleCardClick;
+        window.goToPage = goToPage;
+
+        // 시작
+        init();
+    </script>
+</body>
+</html>
