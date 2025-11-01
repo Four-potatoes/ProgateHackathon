@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(\"TaeWoong/src/index.html\")",
-      "Bash(python -m http.server:*)"
+      "Bash(python -m http.server:*)",
+      "Bash(start http://localhost/phpmyadmin)",
+      "Bash(start https://console.cloud.google.com/apis/credentials/consent)",
+      "Bash(start https://console.cloud.google.com/apis/library/people.googleapis.com)",
+      "Bash(git add:*)",
+      "Bash(start https://github.com/Four-potatoes/ProgateHackathon/security/secret-scanning/unblock-secret/34sELNQfO9Ydm6lH1gHgYWCZL6Q)",
+      "Bash(start https://github.com/Four-potatoes/ProgateHackathon/security/secret-scanning/unblock-secret/34sELQFx8oQpv5UpcSKlcgqPI2k)"
     ],
     "deny": [],
     "ask": []
