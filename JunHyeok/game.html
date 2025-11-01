@@ -36,10 +36,10 @@
         <!-- 초기 로딩 화면: Firebase 인증 및 데이터 준비 중임을 나타냅니다. -->
         <div class="flex flex-col justify-center items-center h-screen bg-pink-50">
             <svg data-lucide="loader-2" class="animate-spin text-indigo-500 w-12 h-12"></svg>
-            <p class="ml-4 text-xl text-gray-700 mt-4">데이터 로딩 및 인증 중입니다...</p>
+            <p class="ml-4 text-xl text-gray-700 mt-4">로딩 중...</p>
         </div>
     </div>
-
+    
     <!-- Firebase SDK와 메인 애플리케이션 로직을 담고 있는 JavaScript 모듈 -->
     <script type="module">
         // Firebase 필요한 모듈 임포트
@@ -304,7 +304,7 @@
                 onclick="window.goToPage('${page}')"
                 class="flex items-center space-x-2 bg-purple-500 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-purple-600 transition duration-300 text-sm"
             >
-                <svg data-lucide="${icon}" class="w-5 h-5"></svg>
+                
                 <span>${label}</span>
             </button>
         `;
@@ -327,7 +327,7 @@
                         <!-- 카드 뒷면 (K-Culture 테마) -->
                         <div class="absolute backface-hidden w-full h-full bg-indigo-500 rounded-lg shadow-xl border-4 border-indigo-700 flex flex-col items-center justify-center">
                              <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
-                             <span class="text-white font-bold mt-2">K-Culture</span>
+                             <div><img src="" alt="그림1"></div>
                         </div>
                         
                         <!-- 카드 앞면 (K-Culture Content) -->
@@ -355,7 +355,7 @@
                                 onclick="window.goToPage('leaderboard')"
                                 class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 text-lg"
                             >
-                                <svg data-lucide="trophy" class="inline w-5 h-5 mr-2"></svg> 랭킹 확인 및 기록 등록
+                                랭킹 확인 및 기록 등록
                             </button>
                         </div>
                     </div>
@@ -365,7 +365,7 @@
             appContainer.innerHTML = `
                 <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
                     <h1 class="text-4xl font-extrabold text-indigo-600 my-4 tracking-tight">
-                        <svg data-lucide="sparkles" class="inline w-6 h-6 mr-2 text-yellow-500"></svg>
+                        
                         K-Culture Memory Master
                     </h1>
 
@@ -379,7 +379,7 @@
                                 onclick="window.initializeGame()"
                                 class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 flex items-center"
                             >
-                                <svg data-lucide="rotate-ccw" class="w-4 h-4 mr-1"></svg> 재시작
+                                재시작
                             </button>
                         </div>
 
@@ -423,7 +423,7 @@
                         onclick="window.goToPage('game')"
                         class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                       게임으로 돌아가기
                     </button>
                 </div>
             `;
@@ -451,7 +451,7 @@
                     class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 flex items-center justify-center ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
                     ${isProcessing ? 'disabled' : ''}
                 >
-                    <svg data-lucide="check" class="w-5 h-5 mr-2"></svg> 정답 확인
+                    정답 확인
                 </button>
             ` : '';
 
@@ -494,7 +494,7 @@
                         onclick="window.goToPage('game')"
                         class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                         게임으로 돌아가기
                     </button>
                 </div>
             `;
@@ -547,7 +547,7 @@
                         onclick="window.goToPage('game')"
                         class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                        게임으로 돌아가기
                     </button>
                 </div>
             `;
