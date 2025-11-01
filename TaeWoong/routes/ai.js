@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { promisePool } = require('../config/db'); // Import promisePool for DB operations
 
 // Google AI API 클라이언트 설정
@@ -12,8 +12,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * POST /api/ai/quiz
  * AI에게 퀴즈 질문을 요청합니다.
  * 요청 본문에는 해금된 카드 정보가 포함됩니다.
+ * 인증 선택적 (게스트도 사용 가능)
  */
-router.post('/quiz', authenticateToken, async (req, res) => {
+router.post('/quiz', optionalAuth, async (req, res) => {
     const { unlockedCards } = req.body;
 
     if (!unlockedCards || unlockedCards.length === 0) {
@@ -86,8 +87,9 @@ router.post('/quiz', authenticateToken, async (req, res) => {
 /**
  * POST /api/ai/answer
  * 사용자의 답변을 AI에게 보내 채점합니다.
+ * 인증 선택적 (게스트는 코인 보상 없음)
  */
-router.post('/answer', authenticateToken, async (req, res) => {
+router.post('/answer', optionalAuth, async (req, res) => {
     const { answer, question, options, correctAnswer, questionContext } = req.body; // question, options, correctAnswer 추가
 
     if (!answer || !question || !correctAnswer || !questionContext) {
@@ -136,12 +138,17 @@ router.post('/answer', authenticateToken, async (req, res) => {
         const isCorrect = evaluation.isCorrect;
         const reward = isCorrect ? 10 : 0; // 정답 시 10 코인 보상
 
-        if (isCorrect) {
-            // 유저 코인 업데이트
-            await promisePool.query(
-                'UPDATE users SET coins = coins + ? WHERE id = ?',
-                [reward, req.user.id]
-            );
+        // 인증된 사용자만 코인 보상
+        if (isCorrect && req.user && req.user.id) {
+            try {
+                await promisePool.query(
+                    'UPDATE users SET coins = coins + ? WHERE id = ?',
+                    [reward, req.user.id]
+                );
+            } catch (error) {
+                console.error('코인 업데이트 실패:', error);
+                // 코인 업데이트 실패해도 퀴즈 결과는 반환
+            }
         }
 
         res.json({

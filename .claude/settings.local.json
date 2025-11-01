@@ -12,7 +12,8 @@
       "Bash(cat:*)",
       "Bash(start https://console.cloud.google.com/projectcreate)",
       "Bash(start https://console.cloud.google.com/apis/credentials)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx create-react-app client --template typescript)"
     ],
     "deny": [],
     "ask": []

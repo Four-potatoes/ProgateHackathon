@@ -132,13 +132,14 @@ header {
     transition: .3s;
 }
 .util {
-    width: 10%;
+    width: 15%;
     height: 100%;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     font-weight: 300;
     font-size: 18px;
+    gap: 10px;
 }
 .hambugerNav {
     display: none;
@@ -263,7 +264,7 @@ header {
 .partIntroContainer {
   position: relative;
   height: 600vh;
-  background: url(./assets/img/introBg2.jpg) no-repeat center center;
+  background: url(/assets/img/introBg2.jpg) no-repeat center center;
   background-size: cover; /* 전체 영역에 맞게 이미지 늘리기 */
   background-attachment: fixed; /* 스크롤 시 배경 고정 */
   color: #fff;
