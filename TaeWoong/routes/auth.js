@@ -35,7 +35,7 @@ router.post('/signup', async (req, res) => {
 
         // 사용자 생성
         const [result] = await promisePool.query(
-            'INSERT INTO users (email, password, name, avatar) VALUES (?, ?, ?, ?)',
+            'INSERT INTO users (email, google_id, name, avatar) VALUES (?, ?, ?, ?)',
             [email, hashedPassword, name, avatar || '😊']
         );
 
@@ -51,7 +51,8 @@ router.post('/signup', async (req, res) => {
             id: userId,
             email,
             name,
-            avatar: avatar || '😊'
+            avatar: avatar || '😊',
+            coins: 0
         };
 
         // JWT 토큰 생성
@@ -106,7 +107,7 @@ router.post('/login', async (req, res) => {
         const user = users[0];
 
         // 비밀번호 확인
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        const passwordMatch = await bcrypt.compare(password, user.google_id);
 
         if (!passwordMatch) {
             return res.status(401).json({
@@ -135,7 +136,8 @@ router.post('/login', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
-                avatar: user.avatar
+                avatar: user.avatar,
+                coins: user.coins
             },
             token,
             message: '로그인되었습니다.'
@@ -186,7 +188,7 @@ router.post('/simple-login', async (req, res) => {
 router.get('/me', authenticateToken, async (req, res) => {
     try {
         const [users] = await promisePool.query(
-            'SELECT id, email, name, avatar, profile_picture, created_at FROM users WHERE id = ?',
+            'SELECT id, email, name, avatar, coins, profile_picture, created_at FROM users WHERE id = ?',
             [req.user.id]
         );
 
@@ -209,6 +211,7 @@ router.get('/me', authenticateToken, async (req, res) => {
                 email: user.email,
                 name: user.name,
                 avatar: user.avatar,
+                coins: user.coins,
                 profilePicture: user.profile_picture,
                 createdAt: user.created_at
             },
