@@ -1,0 +1,52 @@
+{
+    "food" : [
+        {
+            "idx": 1,
+            "title" : "불국사·석굴암",
+            "img" : "석굴암.jpg",
+            "address": "경북 경주시 석굴로 238"
+        },
+        {
+            "idx": 2,
+            "title" : "수원 화성",
+            "img": "수원화성.jpg",
+            "address": "경기 수원시 장안구 영화동 320-2"
+        },
+        {
+            "idx": 3,
+            "title" : "창덕궁",
+            "img": "창덕궁.jpg",
+            "address":"서울 종로구 율곡로 99"
+        },
+        {
+            "idx": 4,
+            "title" : "훈민정음",
+            "img": "훈민정음.jpg",
+            "address": ""
+        },
+        {
+            "idx": 5,
+            "title" : "종묘",
+            "img": "종묘.jpg",
+            "address":"서울 종로구 종로 157"
+        },
+        {
+            "idx": 6,
+            "title" : "김장",
+            "img": "김장.jpg",
+            "address": ""
+        },
+        {
+            "idx": 7,
+            "title" : "판소리",
+            "img": "판소리.jpg",
+            "address": ""
+        },
+        {
+            "idx": 8,
+            "title" : "탈춤",
+            "img": "탈춤.jpg",
+            "address": ""
+        }
+    ]
+}

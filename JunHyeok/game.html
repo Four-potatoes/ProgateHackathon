@@ -4,60 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>K-Culture Memory Master</title>
-    <!-- Tailwind CSS CDN을 로드합니다. 디자인을 담당합니다. -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 카드 플립 애니메이션을 위한 Custom CSS */
+        /* 카드 플립 애니메이션 */
         .perspective { perspective: 1000px; }
-        .transform-style-preserve-3d { transform-style: preserve-3d; }
+        .transform-3d { transform-style: preserve-3d; }
         .backface-hidden { backface-visibility: hidden; }
-        .rotate-y-180 { transform: rotateY(180deg); }
-        .card-inner { transition: transform 0.5s; }
+        .flip { transform: rotateY(180deg); }
+        .card-transition { transition: transform 0.5s; }
         
-        /* 승리 모달이 팝업되는 애니메이션 */
-        @keyframes pop-in {
+        /* 승리 모달 애니메이션 */
+        @keyframes pop {
             0% { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .animate-pop-in { animation: pop-in 0.3s ease-out forwards; }
+        .pop-in { animation: pop 0.3s ease-out forwards; }
     </style>
-    <!-- Lucide 아이콘 라이브러리를 로드하고 초기화합니다. -->
     <script type="module">
         import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
-        window.addEventListener('load', () => {
-            // 모든 Lucide 아이콘을 DOM에서 찾아서 렌더링합니다.
-            createIcons({ icons });
-        });
+        window.addEventListener('load', () => createIcons({ icons }));
     </script>
 </head>
-<body class="min-h-screen font-sans bg-gray-50" id="body-container">
+<body class="min-h-screen font-sans bg-gray-50">
 
     <div id="app" class="min-h-screen">
-        <!-- 초기 로딩 화면: Firebase 인증 및 데이터 준비 중임을 나타냅니다. -->
+        <!-- 로딩 화면 -->
         <div class="flex flex-col justify-center items-center h-screen bg-pink-50">
             <svg data-lucide="loader-2" class="animate-spin text-indigo-500 w-12 h-12"></svg>
-            <p class="ml-4 text-xl text-gray-700 mt-4">데이터 로딩 및 인증 중입니다...</p>
+            <p class="ml-4 text-xl text-gray-700 mt-4">로딩 중...</p>
         </div>
     </div>
-
-    <!-- Firebase SDK와 메인 애플리케이션 로직을 담고 있는 JavaScript 모듈 -->
+    
     <script type="module">
-        // Firebase 필요한 모듈 임포트
+        // ============================================
+        // Firebase 임포트
+        // ============================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ===============================================
-        // 1. 전역 상수 및 설정 (Constants)
-        // ===============================================
+        // ============================================
+        // 상수 및 설정
+        // ============================================
+        const config = {
+            firebase: typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null,
+            authToken: typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null,
+            appId: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'
+        };
 
-        // 캔버스 환경에서 제공되는 전역 변수 설정 (Firebase 및 App ID)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kculture-app-id';
-
-        // K-Culture 카드 데이터 (8쌍)
-        const K_CULTURE_ITEMS = [
+        // K-Culture 카드 데이터 (8쌍 = 16장)
+        const ITEMS = [
             { name: '한복', icon: '👘', desc: '한국의 전통 의상.' },
             { name: '김치', icon: '🌶️', desc: '한국의 대표적인 발효 음식.' },
             { name: '비빔밥', icon: '🍚', desc: '밥 위에 나물을 얹어 비벼 먹는 음식.' },
@@ -68,270 +64,213 @@
             { name: '가야금', icon: '🎶', desc: '한국의 전통 현악기.' },
         ];
 
-        // ===============================================
-        // 2. 상태 관리 (State Variables)
-        // ===============================================
-
+        // ============================================
+        // 전역 상태
+        // ============================================
         let app, db, auth;
-        let currentUserId = null;       // 현재 로그인된 사용자의 ID
-        let isAuthReady = false;        // Firebase 인증 및 초기화 완료 여부
+        let userId = null;
+        let isReady = false;
         
-        let CARD_PAIRS;                 // 게임에 사용될 전체 카드 목록 (16개)
-        let totalPairs;                 // 총 카드 쌍의 수
+        // 게임 상태
+        let cards = [];
+        let flipped = [];
+        let matched = [];
+        let moves = 0;
+        let won = false;
+        let clickable = true;
         
-        let cards = [];                 // 현재 게임판의 카드 배열
-        let flipped = [];               // 뒤집힌 카드 ID (최대 2개)
-        let matched = [];               // 짝을 맞춘 카드 ID
-        let moves = 0;                  // 시도 횟수
-        let isWon = false;              // 게임 승리 여부
-        let canClick = true;            // 카드 클릭 가능 여부 (딜레이 중 방지)
-        let currentPage = 'game';       // 현재 표시되는 페이지
-
-        let currentQuiz = null;         // AI 학습 페이지의 현재 퀴즈
-        let aiFeedback = null;          // AI 학습 페이지의 피드백
-        let isProcessing = false;       // AI 학습 퀴즈 생성/제출 처리 중 여부
+        // UI 상태
+        let page = 'game';
+        let quiz = null;
+        let feedback = null;
+        let processing = false;
         
-        const appContainer = document.getElementById('app');
+        const root = document.getElementById('app');
 
-        // ===============================================
-        // 3. 유틸리티 함수 (Utility Functions)
-        // ===============================================
-
-        // 배열 섞기 (Fisher-Yates 알고리즘)
-        const shuffleArray = (array) => {
-            let currentIndex = array.length, randomIndex;
-            while (currentIndex !== 0) {
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex--;
-                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        // ============================================
+        // 유틸리티
+        // ============================================
+        const shuffle = (arr) => {
+            const result = [...arr];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
             }
-            return array;
+            return result;
         };
 
-        // 페이지 이동 함수
-        const goToPage = (pageName) => {
-            currentPage = pageName;
+        const navigate = (newPage) => {
+            page = newPage;
             render();
-            // 페이지가 변경될 때 Lucide 아이콘을 다시 렌더링합니다.
             if (window.createIcons && window.icons) {
                 window.createIcons({ icons: window.icons });
             }
         };
 
-        // ===============================================
-        // 4. 게임 핵심 로직 (Game Core Logic)
-        // ===============================================
-
-        // 게임에 사용할 카드 데이터를 초기화합니다. (8쌍을 만들어 16개 카드를 준비)
-        const initializeCardData = () => {
-             CARD_PAIRS = [...K_CULTURE_ITEMS, ...K_CULTURE_ITEMS].map((item, index) => ({
-                ...item,
-                // 각 카드는 고유 ID를 가집니다. (짝이 같은 경우라도 ID는 다름)
-                id: index,
-            }));
-            totalPairs = CARD_PAIRS.length / 2;
-        }
-
-        // 새 게임을 시작할 때 상태를 초기화하고 카드를 섞습니다.
-        const initializeGame = () => {
-            initializeCardData();
-            cards = shuffleArray([...CARD_PAIRS]);
+        // ============================================
+        // 게임 로직
+        // ============================================
+        const startGame = () => {
+            const pairs = [...ITEMS, ...ITEMS].map((item, i) => ({ ...item, id: i }));
+            cards = shuffle(pairs);
             flipped = [];
             matched = [];
             moves = 0;
-            isWon = false;
-            canClick = true;
+            won = false;
+            clickable = true;
             renderGame();
         };
 
-        // 승리 조건을 확인하고, 충족되면 점수를 제출합니다.
-        const checkWinCondition = () => {
-            if (matched.length > 0 && matched.length === cards.length) {
-                isWon = true;
-                submitScore(moves);
-                renderGame(); // 승리 모달 표시를 위해 재렌더링
+        const checkWin = () => {
+            if (matched.length === cards.length) {
+                won = true;
+                saveScore(moves);
+                renderGame();
             }
         };
 
-        // 카드 클릭 이벤트 핸들러
-        const handleCardClick = (cardId) => {
-            // 클릭 불가능 조건: 클릭 중이거나, 이미 2장이 뒤집혔거나, 이미 맞춘 카드거나, 게임이 끝났을 때
-            if (!canClick || flipped.length === 2 || flipped.includes(cardId) || matched.includes(cardId) || isWon) {
+        const clickCard = (id) => {
+            if (!clickable || flipped.length === 2 || flipped.includes(id) || matched.includes(id) || won) {
                 return;
             }
 
-            // 카드 뒤집기
-            flipped.push(cardId);
-            renderGame(); 
+            flipped.push(id);
+            renderGame();
             
             if (flipped.length === 2) {
-                canClick = false; // 클릭 잠금
+                clickable = false;
                 moves++;
-                renderGame(); // 시도 횟수 업데이트
+                renderGame();
 
-                const [firstId, secondId] = flipped;
-                const item1 = cards.find(c => c.id === firstId);
-                const item2 = cards.find(c => c.id === secondId);
+                const [first, second] = flipped;
+                const card1 = cards.find(c => c.id === first);
+                const card2 = cards.find(c => c.id === second);
 
-                // 짝 맞추기 성공 (name이 같으면 성공)
-                if (item1 && item2 && item1.name === item2.name) {
-                    matched.push(firstId, secondId);
+                if (card1.name === card2.name) {
+                    matched.push(first, second);
                     flipped = [];
-                    canClick = true; // 클릭 잠금 해제
-                    checkWinCondition();
+                    clickable = true;
+                    checkWin();
                     renderGame();
                 } else {
-                    // 짝 맞추기 실패: 1초 후 카드를 다시 뒤집습니다.
                     setTimeout(() => {
                         flipped = [];
-                        canClick = true; // 클릭 잠금 해제
-                        renderGame(); // 카드를 다시 뒤집은 상태로 재렌더링
+                        clickable = true;
+                        renderGame();
                     }, 1000);
                 }
             }
         };
 
-        // ===============================================
-        // 5. Firebase 및 데이터베이스 로직
-        // ===============================================
-
-        // 게임 승리 시 랭킹 데이터를 Firestore에 제출합니다.
-        const submitScore = async (finalMoves) => {
-            if (!db || !currentUserId) {
-                console.error("Database or User ID not ready. Score not submitted.");
-                return;
-            }
+        // ============================================
+        // Firebase 데이터베이스
+        // ============================================
+        const saveScore = async (score) => {
+            if (!db || !userId) return;
             
-            // 랭킹은 모든 사용자가 볼 수 있는 'public' 컬렉션에 저장합니다.
-            const rankingCollectionPath = `artifacts/${appId}/public/data/memory_game_ranking`;
+            const path = `artifacts/${config.appId}/public/data/ranking`;
             try {
-                await addDoc(collection(db, rankingCollectionPath), {
-                    playerUid: currentUserId,
-                    moves: finalMoves,
-                    timestamp: serverTimestamp(), // 서버 시간 기록
+                await addDoc(collection(db, path), {
+                    uid: userId,
+                    moves: score,
+                    time: serverTimestamp(),
                 });
-                console.log("Score submitted successfully:", finalMoves);
-            } catch (error) {
-                console.error("Error submitting score:", error);
+            } catch (err) {
+                console.error("Score save error:", err);
             }
         };
 
-        // 랭킹 리스너 설정: 실시간으로 랭킹 데이터를 가져옵니다.
-        const setupLeaderboardListener = () => {
+        const watchRanking = () => {
             if (!db) return;
-            const rankingCollectionPath = `artifacts/${appId}/public/data/memory_game_ranking`;
-
-            // 쿼리: 시도 횟수(moves)가 적은 순서대로, 시도 횟수가 같으면 타임스탬프(timestamp)가 빠른 순서대로 정렬하여 10개만 가져옵니다.
+            const path = `artifacts/${config.appId}/public/data/ranking`;
             const q = query(
-                collection(db, rankingCollectionPath),
+                collection(db, path),
                 orderBy("moves", "asc"),
-                orderBy("timestamp", "asc"),
+                orderBy("time", "asc"),
                 limit(10)
             );
 
             onSnapshot(q, (snapshot) => {
-                const newRankings = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                // 현재 페이지가 랭킹 보드일 경우에만 화면을 업데이트합니다.
-                if (currentPage === 'leaderboard') {
-                    renderLeaderboard(newRankings, false);
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (page === 'ranking') {
+                    renderRanking(data, false);
                 }
-            }, (error) => {
-                console.error("Error fetching rankings: ", error);
-                if (currentPage === 'leaderboard') {
-                    renderLeaderboard([], false); // 오류 발생 시 빈 리스트 표시
+            }, (err) => {
+                console.error("Ranking error:", err);
+                if (page === 'ranking') {
+                    renderRanking([], false);
                 }
             });
         };
 
-        // ===============================================
-        // 6. AI 학습 로직 (현재는 더미 데이터/로직)
-        // ===============================================
+        // ============================================
+        // AI 학습
+        // ============================================
+        const makeQuiz = () => {
+            processing = true;
+            feedback = null;
+            renderAI();
 
-        // 무작위 퀴즈를 생성합니다. (LLM 연동을 위한 구조)
-        const generateQuiz = () => {
-            isProcessing = true;
-            aiFeedback = null;
-            renderAILearning();
-
-            // 1.5초 딜레이 후 퀴즈 생성 (실제 LLM 호출 시에는 이 부분에 fetch API 로직이 들어갑니다.)
             setTimeout(() => {
-                const item = K_CULTURE_ITEMS[Math.floor(Math.random() * K_CULTURE_ITEMS.length)];
-                currentQuiz = {
-                    question: `다음 설명이 나타내는 K-Culture 항목은 무엇일까요? "${item.desc}"`,
-                    correctAnswer: item.name,
+                const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+                quiz = {
+                    question: `다음 설명이 나타내는 K-Culture 항목은? "${item.desc}"`,
+                    answer: item.name,
                     item: item,
                 };
-                isProcessing = false;
-                // 이전 입력 값 초기화
-                const answerInput = document.getElementById('ai-answer');
-                if (answerInput) answerInput.value = ''; 
-                renderAILearning();
+                processing = false;
+                const input = document.getElementById('answer');
+                if (input) input.value = '';
+                renderAI();
             }, 1500);
         };
 
-        // 퀴즈 정답을 제출하고 피드백을 받습니다. (LLM 연동을 위한 구조)
-        const handleSubmit = () => {
-            const userAnswer = document.getElementById('ai-answer').value.trim();
-            if (!currentQuiz || isProcessing || userAnswer === '') return;
+        const submitAnswer = () => {
+            const input = document.getElementById('answer');
+            const userAnswer = input?.value.trim();
+            if (!quiz || processing || !userAnswer) return;
 
-            isProcessing = true;
-            renderAILearning();
+            processing = true;
+            renderAI();
 
-            const isCorrect = userAnswer.toLowerCase() === currentQuiz.correctAnswer.toLowerCase();
+            const correct = userAnswer.toLowerCase() === quiz.answer.toLowerCase();
             
-            // 1초 딜레이 후 결과 처리
             setTimeout(() => {
-                if (isCorrect) {
-                    aiFeedback = { type: 'correct', message: `✅ 정답! ${currentQuiz.item.icon} ${currentQuiz.item.name}에 대해 완벽하게 이해하셨군요!` };
-                } else {
-                    aiFeedback = { type: 'incorrect', message: `❌ 아쉽지만 틀렸어요. 정답은 '${currentQuiz.correctAnswer}'입니다. 설명을 다시 살펴볼까요?` };
-                }
-                isProcessing = false;
-                renderAILearning();
+                feedback = correct 
+                    ? { type: 'correct', msg: `✅ 정답! ${quiz.item.icon} ${quiz.item.name}` }
+                    : { type: 'wrong', msg: `❌ 틀렸어요. 정답은 '${quiz.answer}'입니다.` };
+                processing = false;
+                renderAI();
             }, 1000);
         };
 
-        // ===============================================
-        // 7. 렌더링 (View Rendering)
-        // ===============================================
-
-        // 네비게이션 버튼 렌더링용 헬퍼 함수
-        const renderNavButton = (icon, label, page) => `
+        // ============================================
+        // 렌더링 - 컴포넌트
+        // ============================================
+        const NavBtn = (label, target) => `
             <button 
-                onclick="window.goToPage('${page}')"
-                class="flex items-center space-x-2 bg-purple-500 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-purple-600 transition duration-300 text-sm"
+                onclick="navigate('${target}')"
+                class="bg-purple-500 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-purple-600 transition"
             >
-                <svg data-lucide="${icon}" class="w-5 h-5"></svg>
-                <span>${label}</span>
+                ${label}
             </button>
         `;
 
-        // 카드 한 장을 렌더링합니다.
-        const renderCard = (card) => {
-            const isFlipped = flipped.includes(card.id) || matched.includes(card.id);
-            const isMatched = matched.includes(card.id);
-            const cursorClass = isMatched ? 'cursor-default' : 'cursor-pointer';
+        const Card = (card) => {
+            const isFlip = flipped.includes(card.id) || matched.includes(card.id);
+            const isMatch = matched.includes(card.id);
+            const cursor = isMatch ? 'cursor-default' : 'cursor-pointer';
 
             return `
-                <div 
-                    id="card-${card.id}"
-                    class="aspect-square perspective ${cursorClass}"
-                    onclick="window.handleCardClick(${card.id})"
-                >
-                    <div class="relative w-full h-full card-inner transform-style-preserve-3d 
-                        ${isFlipped ? 'rotate-y-180' : ''}"
-                    >
-                        <!-- 카드 뒷면 (K-Culture 테마) -->
+                <div class="aspect-square perspective ${cursor}" onclick="clickCard(${card.id})">
+                    <div class="relative w-full h-full card-transition transform-3d ${isFlip ? 'flip' : ''}">
+                        <!-- 뒷면 -->
                         <div class="absolute backface-hidden w-full h-full bg-indigo-500 rounded-lg shadow-xl border-4 border-indigo-700 flex flex-col items-center justify-center">
-                             <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
-                             <span class="text-white font-bold mt-2">K-Culture</span>
+                            <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
                         </div>
                         
-                        <!-- 카드 앞면 (K-Culture Content) -->
-                        <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-1 md:p-2 rotate-y-180">
+                        <!-- 앞면 -->
+                        <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-2 flip">
                             <span class="text-2xl md:text-4xl">${card.icon}</span>
                             <span class="text-xs md:text-sm font-semibold mt-1 text-gray-800 text-center">${card.name}</span>
                         </div>
@@ -340,308 +279,252 @@
             `;
         };
 
-        // 메인 게임 페이지를 렌더링합니다.
+        // ============================================
+        // 렌더링 - 페이지
+        // ============================================
         const renderGame = () => {
-            const cardGrid = cards.map(renderCard).join('');
-            
-            let winModal = '';
-            if (isWon) {
-                winModal = `
-                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center animate-pop-in">
-                            <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 캐치 성공! 축하합니다! 🎉</h2>
-                            <p class="text-lg text-gray-700 mb-6">당신은 <strong>${moves}번</strong> 만에 모든 K-Culture 카드를 캐치했습니다.</p>
+            const grid = cards.map(Card).join('');
+            const modal = won ? `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in">
+                        <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 축하합니다! 🎉</h2>
+                        <p class="text-lg text-gray-700 mb-6"><strong>${moves}번</strong> 만에 모든 카드를 맞췄습니다!</p>
+                        <div class="flex gap-3 justify-center">
                             <button 
-                                onclick="window.goToPage('leaderboard')"
-                                class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 text-lg"
+                                onclick="startGame()"
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition"
                             >
-                                <svg data-lucide="trophy" class="inline w-5 h-5 mr-2"></svg> 랭킹 확인 및 기록 등록
+                                다시하기
+                            </button>
+                            <button 
+                                onclick="navigate('ranking')"
+                                class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition"
+                            >
+                                랭킹 보기
                             </button>
                         </div>
                     </div>
-                `;
-            }
+                </div>
+            ` : '';
 
-            appContainer.innerHTML = `
+            root.innerHTML = `
                 <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
-                    <h1 class="text-4xl font-extrabold text-indigo-600 my-4 tracking-tight">
-                        <svg data-lucide="sparkles" class="inline w-6 h-6 mr-2 text-yellow-500"></svg>
-                        K-Culture Memory Master
-                    </h1>
+                    <h1 class="text-4xl font-extrabold text-indigo-600 my-4">K-Culture Memory Master</h1>
 
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mb-6">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
-                            <div class="flex flex-col items-start">
-                                <span class="text-xl font-bold text-gray-700">시도 횟수: <span class="text-indigo-500">${moves}</span></span>
-                                <span class="text-sm text-gray-500 mt-1">남은 쌍: ${totalPairs - (matched.length / 2)} / ${totalPairs}</span>
+                            <div>
+                                <span class="text-xl font-bold text-gray-700">시도: <span class="text-indigo-500">${moves}</span></span>
+                                <span class="text-sm text-gray-500 ml-3">남은 쌍: ${8 - matched.length / 2}</span>
                             </div>
                             <button 
-                                onclick="window.initializeGame()"
-                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 flex items-center"
+                                onclick="startGame()"
+                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition"
                             >
-                                <svg data-lucide="rotate-ccw" class="w-4 h-4 mr-1"></svg> 재시작
+                                재시작
                             </button>
                         </div>
 
-                        <!-- 카드 그리드 (4x4) -->
-                        <div class="grid grid-cols-4 gap-3 md:gap-4">
-                            ${cardGrid}
-                        </div>
+                        <div class="grid grid-cols-4 gap-3 md:gap-4">${grid}</div>
                     </div>
                     
-                    ${winModal}
+                    ${modal}
 
-                    <!-- 하단 네비게이션 버튼 -->
                     <div class="mt-6 flex flex-wrap justify-center gap-3">
-                        ${renderNavButton('library', '카드 도감', 'collection')}
-                        ${renderNavButton('graduation-cap', 'AI 학습', 'ai-learning')}
-                        ${renderNavButton('trophy', '랭킹', 'leaderboard')}
+                        ${NavBtn('카드 도감', 'cards')}
+                        ${NavBtn('AI 학습', 'ai')}
+                        ${NavBtn('랭킹', 'ranking')}
                     </div>
                 </div>
             `;
         };
 
-        // 카드 도감 페이지를 렌더링합니다.
-        const renderCollection = () => {
-            const cardList = K_CULTURE_ITEMS.map((item, index) => `
-                <div key=${index} class="bg-white p-4 rounded-xl shadow-lg border-2 border-yellow-400 hover:shadow-xl transition duration-300">
+        const renderCards = () => {
+            const list = ITEMS.map((item, i) => `
+                <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-yellow-400 hover:shadow-xl transition">
                     <div class="text-4xl text-center mb-2">${item.icon}</div>
                     <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
                     <p class="text-sm text-gray-600">${item.desc}</p>
                 </div>
             `).join('');
 
-            appContainer.innerHTML = `
+            root.innerHTML = `
                 <div class="p-6 min-h-screen bg-yellow-50">
-                    <h1 class="text-3xl font-bold text-yellow-700 mb-6 border-b pb-3 flex items-center justify-center">
-                         <svg data-lucide="library" class="w-6 h-6 mr-2"></svg> 수집 카드 도감
-                    </h1>
+                    <h1 class="text-3xl font-bold text-yellow-700 mb-6 text-center">📚 카드 도감</h1>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                        ${cardList}
+                        ${list}
                     </div>
                     <button 
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                        onclick="navigate('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                        게임으로
                     </button>
                 </div>
             `;
         };
 
-        // AI 학습 페이지를 렌더링합니다.
-        const renderAILearning = () => {
-            // 재렌더링 시 Input 값을 유지하기 위해 현재 값을 가져옵니다.
-            const currentAnswerValue = document.getElementById('ai-answer')?.value || '';
+        const renderAI = () => {
+            const answerVal = document.getElementById('answer')?.value || '';
 
-            const quizContent = currentQuiz ? `
-                <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400">
-                    <p class="text-md text-gray-700">${currentQuiz.question}</p>
+            const quizBlock = quiz ? `
+                <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400 mb-4">
+                    <p class="text-md text-gray-700">${quiz.question}</p>
                 </div>
                 <input
                     type="text"
-                    id="ai-answer"
-                    value="${currentAnswerValue}"
-                    oninput="this.setAttribute('value', this.value)"
-                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                    placeholder="정답을 입력하세요 (예: 김치)"
+                    id="answer"
+                    value="${answerVal}"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4"
+                    placeholder="정답 입력 (예: 김치)"
                 />
                 <button 
-                    onclick="window.handleSubmit()"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 flex items-center justify-center ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
-                    ${isProcessing ? 'disabled' : ''}
+                    onclick="submitAnswer()"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}"
+                    ${processing ? 'disabled' : ''}
                 >
-                    <svg data-lucide="check" class="w-5 h-5 mr-2"></svg> 정답 확인
+                    정답 확인
                 </button>
             ` : '';
 
-            const feedbackContent = aiFeedback ? `
-                <div class="p-3 rounded-lg font-semibold ${aiFeedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                    ${aiFeedback.message}
+            const feedbackBlock = feedback ? `
+                <div class="p-3 rounded-lg font-semibold mt-4 ${feedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    ${feedback.msg}
                 </div>
             ` : '';
 
-            appContainer.innerHTML = `
+            root.innerHTML = `
                 <div class="p-6 min-h-screen bg-blue-50">
-                    <h1 class="text-3xl font-bold text-blue-700 mb-6 border-b pb-3 flex items-center justify-center">
-                        <svg data-lucide="graduation-cap" class="w-6 h-6 mr-2"></svg> AI 기반 학습 센터
-                    </h1>
+                    <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
                     
-                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto space-y-4">
-                        <p class="text-lg font-semibold text-gray-800">
-                            <span class="text-indigo-500 font-extrabold">하츄핑:</span> 캐치한 카드에 대한 퀴즈를 풀어볼까요?
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto">
+                        <p class="text-lg font-semibold text-gray-800 mb-4">
+                            <span class="text-indigo-500">하츄핑:</span> 퀴즈를 풀어볼까요?
                         </p>
 
-                        ${isProcessing ? 
-                            `<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline mr-2 w-6 h-6"></svg> 퀴즈 생성/평가 중...</div>` 
-                            : ''
-                        }
-
-                        ${!isProcessing ? quizContent : ''}
-                        
-                        ${feedbackContent}
+                        ${processing ? '<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6"></svg> 처리 중...</div>' : ''}
+                        ${!processing ? quizBlock : ''}
+                        ${feedbackBlock}
                         
                         <button 
-                            onclick="window.generateQuiz()"
-                            class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
-                            ${isProcessing ? 'disabled' : ''}
+                            onclick="makeQuiz()"
+                            class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}"
+                            ${processing ? 'disabled' : ''}
                         >
-                            다음 문제 풀기
+                            다음 문제
                         </button>
                     </div>
                     
                     <button 
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                        onclick="navigate('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                        게임으로
                     </button>
                 </div>
             `;
         };
 
-        // 랭킹 페이지를 렌더링합니다. (데이터는 setupLeaderboardListener에서 가져옴)
-        const renderLeaderboard = (rankings, isLoading) => {
-            let rankingContent = '';
-            if (isLoading) {
-                rankingContent = `<div class="p-4 flex justify-center items-center"><svg data-lucide="loader-2" class="animate-spin text-blue-500 w-6 h-6"></svg><span class="ml-2 text-gray-600">랭킹 데이터 로딩 중...</span></div>`;
-            } else if (rankings.length === 0) {
-                rankingContent = `<p class="text-center text-gray-500 p-4">아직 랭킹 기록이 없습니다. 첫 승리자가 되어보세요!</p>`;
+        const renderRanking = (data, loading) => {
+            let content = '';
+            if (loading) {
+                content = '<div class="p-4 text-center text-gray-600">로딩 중...</div>';
+            } else if (data.length === 0) {
+                content = '<p class="text-center text-gray-500 p-4">아직 기록이 없습니다!</p>';
             } else {
-                rankingContent = rankings.map((rank, index) => `
-                    <div 
-                        class="flex justify-between items-center p-3 rounded-lg transition duration-150 ${
-                            rank.playerUid === currentUserId ? 'bg-yellow-100 font-extrabold shadow-md border-2 border-yellow-400' : 'bg-gray-50'
-                        }"
-                    >
-                        <!-- 순위 표시 -->
-                        <span class="text-xl font-bold ${index === 0 ? 'text-yellow-600' : 'text-gray-700'}">${index + 1}.</span>
-                        <!-- 플레이어 ID 표시 (본인일 경우 '나' 표시) -->
+                content = data.map((r, i) => `
+                    <div class="flex justify-between items-center p-3 rounded-lg ${r.uid === userId ? 'bg-yellow-100 font-bold border-2 border-yellow-400' : 'bg-gray-50'}">
+                        <span class="text-xl font-bold ${i === 0 ? 'text-yellow-600' : 'text-gray-700'}">${i + 1}.</span>
                         <span class="flex-1 ml-4 truncate text-sm">
-                            ${rank.playerUid === currentUserId ? '나 (You) - ' : `ID: `}
-                            <span class="font-mono text-gray-500">${rank.playerUid}</span>
+                            ${r.uid === userId ? '나 (You)' : `ID: ${r.uid.slice(0, 8)}...`}
                         </span>
-                        <!-- 시도 횟수 표시 -->
-                        <span class="text-lg font-mono text-indigo-600">${rank.moves} Moves</span>
+                        <span class="text-lg font-mono text-indigo-600">${r.moves}</span>
                     </div>
                 `).join('');
             }
 
-            appContainer.innerHTML = `
+            root.innerHTML = `
                 <div class="p-6 min-h-screen bg-purple-50">
-                    <h1 class="text-3xl font-bold text-purple-700 mb-6 border-b pb-3 flex items-center justify-center">
-                        <svg data-lucide="trophy" class="w-6 h-6 mr-2"></svg> 명예의 전당 (리더보드)
-                    </h1>
+                    <h1 class="text-3xl font-bold text-purple-700 mb-6 text-center">🏆 랭킹</h1>
                     
                     <div class="p-4 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
-                        <h2 class="text-2xl font-bold mb-4 text-center text-indigo-700 border-b pb-2">🏆 최고 기록 (최소 시도)</h2>
-                        <div class="space-y-2">
-                            ${rankingContent}
-                        </div>
-                        <div class="mt-4 text-xs text-gray-400 truncate pt-2 border-t">
-                            당신의 유저 ID (전체): ${currentUserId || '로딩 중...'}
-                        </div>
+                        <h2 class="text-2xl font-bold mb-4 text-center text-indigo-700 border-b pb-2">최고 기록</h2>
+                        <div class="space-y-2">${content}</div>
                     </div>
                     
                     <button 
-                        onclick="window.goToPage('game')"
-                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                        onclick="navigate('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto"
                     >
-                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                        게임으로
                     </button>
                 </div>
             `;
         };
 
-
-        // 모든 페이지 렌더링을 조정하는 마스터 함수
         const render = () => {
-            if (!isAuthReady) {
-                // 인증 준비 중이면 초기 로딩 화면을 유지합니다.
-                return;
-            }
+            if (!isReady) return;
 
-            // 현재 페이지 상태에 따라 적절한 렌더링 함수를 호출합니다.
-            switch (currentPage) {
-                case 'game':
-                    renderGame();
+            switch (page) {
+                case 'game': renderGame(); break;
+                case 'cards': renderCards(); break;
+                case 'ai': 
+                    renderAI();
+                    if (!quiz && !processing) makeQuiz();
                     break;
-                case 'collection':
-                    renderCollection();
+                case 'ranking': 
+                    renderRanking([], true);
+                    watchRanking();
                     break;
-                case 'ai-learning':
-                    renderAILearning();
-                    // AI 학습 페이지 첫 진입 시 퀴즈를 생성합니다.
-                    if (!currentQuiz && !isProcessing) {
-                        generateQuiz();
-                    }
-                    break;
-                case 'leaderboard':
-                    renderLeaderboard([], true); // 로딩 상태로 렌더링
-                    setupLeaderboardListener();   // 실시간 랭킹 리스너 시작
-                    break;
-                default:
-                    appContainer.innerHTML = '<h1 class="text-red-500 text-center mt-10">페이지 오류</h1>';
             }
-            // 페이지 콘텐츠가 업데이트된 후 아이콘을 다시 렌더링합니다.
+            
             if (window.createIcons && window.icons) {
-                 window.createIcons({ icons: window.icons });
+                window.createIcons({ icons: window.icons });
             }
         };
 
-        // ===============================================
-        // 8. 초기화 (Initialization)
-        // ===============================================
-
-        // Firebase를 초기화하고 사용자 인증을 처리합니다.
-        async function initFirebase() {
-            if (!firebaseConfig) { 
-                console.warn("Firebase config missing. Running in non-persistent mode.");
-                currentUserId = crypto.randomUUID(); // 고유 ID 할당
-                isAuthReady = true;
-                initializeGame();
+        // ============================================
+        // 초기화
+        // ============================================
+        async function init() {
+            if (!config.firebase) {
+                userId = crypto.randomUUID();
+                isReady = true;
+                startGame();
                 render();
                 return;
             }
             
-            app = initializeApp(firebaseConfig);
+            app = initializeApp(config.firebase);
             db = getFirestore(app);
             auth = getAuth(app);
 
-            // 1. Auth Listener 설정: 인증 상태가 변경될 때마다 호출되어 사용자 ID를 업데이트합니다.
             onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUserId = user.uid;
-                } else {
-                    currentUserId = crypto.randomUUID(); // 익명 사용자에게 고유 ID 할당
-                }
-                isAuthReady = true;
-                initializeGame(); // 게임 초기화 및 시작
-                render(); // 첫 화면 렌더링
+                userId = user ? user.uid : crypto.randomUUID();
+                isReady = true;
+                startGame();
+                render();
             });
 
-            // 2. 초기 Sign-In: 제공된 토큰이 있으면 로그인, 없으면 익명 로그인 시도
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                if (config.authToken) {
+                    await signInWithCustomToken(auth, config.authToken);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (error) {
-                console.error("Firebase Sign-In Error:", error);
+            } catch (err) {
+                console.error("Auth error:", err);
             }
         }
         
-        // HTML 'onclick' 속성에서 함수를 호출할 수 있도록 전역 스코프에 등록합니다.
-        window.handleCardClick = handleCardClick;
-        window.initializeGame = initializeGame;
-        window.goToPage = goToPage;
-        window.generateQuiz = generateQuiz;
-        window.handleSubmit = handleSubmit;
+        // 전역 함수 등록
+        window.clickCard = clickCard;
+        window.startGame = startGame;
+        window.navigate = navigate;
+        window.makeQuiz = makeQuiz;
+        window.submitAnswer = submitAnswer;
 
-        // 윈도우 로드 시 모든 것을 시작합니다.
-        window.onload = initFirebase;
-
+        window.onload = init;
     </script>
 </body>
 </html>
