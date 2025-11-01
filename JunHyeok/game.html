@@ -78,12 +78,15 @@
         let moves = 0;
         let won = false;
         let clickable = true;
+        let unlockedCards = new Set(); // 잠금 해제된 카드 이름들
         
         // UI 상태
         let page = 'game';
         let quiz = null;
         let feedback = null;
         let processing = false;
+        let selectedCard = null; // 도감에서 선택된 카드
+        let solvedQuizzes = new Set(); // 풀린 퀴즈들 (형식: "카드이름-fill" or "카드이름-write")
         
         const root = document.getElementById('app');
 
@@ -148,6 +151,7 @@
 
                 if (card1.name === card2.name) {
                     matched.push(first, second);
+                    unlockedCards.add(card1.name); // 카드 잠금 해제
                     flipped = [];
                     clickable = true;
                     checkWin();
@@ -206,18 +210,74 @@
         // ============================================
         // AI 학습
         // ============================================
-        const makeQuiz = () => {
+        const getUnsolvedQuizzes = () => {
+            const unlockedItems = ITEMS.filter(item => unlockedCards.has(item.name));
+            const unsolved = [];
+            
+            unlockedItems.forEach(item => {
+                if (!solvedQuizzes.has(`${item.name}-fill`)) {
+                    unsolved.push({ item, type: 'fill' });
+                }
+                if (!solvedQuizzes.has(`${item.name}-write`)) {
+                    unsolved.push({ item, type: 'write' });
+                }
+            });
+            
+            return unsolved;
+        };
+
+        const makeQuiz = (specificItem = null) => {
             processing = true;
             feedback = null;
             renderAI();
 
             setTimeout(() => {
-                const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-                quiz = {
-                    question: `다음 설명이 나타내는 K-Culture 항목은? "${item.desc}"`,
-                    answer: item.name,
-                    item: item,
-                };
+                const unsolvedQuizzes = getUnsolvedQuizzes();
+                
+                // 모든 퀴즈를 다 풀었는지 확인
+                if (unsolvedQuizzes.length === 0) {
+                    processing = false;
+                    quiz = null;
+                    renderAI();
+                    return;
+                }
+                
+                // 특정 카드가 지정되었으면 그 카드의 안 푼 문제를 찾음
+                let selectedQuiz;
+                if (specificItem) {
+                    const itemQuizzes = unsolvedQuizzes.filter(q => q.item.name === specificItem.name);
+                    selectedQuiz = itemQuizzes.length > 0 
+                        ? itemQuizzes[Math.floor(Math.random() * itemQuizzes.length)]
+                        : unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
+                } else {
+                    // 랜덤으로 안 푼 문제 선택
+                    selectedQuiz = unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
+                }
+                
+                const { item, type } = selectedQuiz;
+                
+                if (type === 'fill') {
+                    // 빈칸 채우기
+                    const blankedDesc = item.desc.replace(item.name, '___');
+                    quiz = {
+                        type: 'fill',
+                        question: `다음 빈칸에 알맞은 K-Culture 항목을 채워주세요:\n"${blankedDesc}"`,
+                        answer: item.name,
+                        item: item,
+                        quizId: `${item.name}-fill`
+                    };
+                } else {
+                    // 정보 쓰기
+                    quiz = {
+                        type: 'write',
+                        question: `'${item.name}'${item.icon}에 대해 설명해주세요.`,
+                        answer: item.desc,
+                        item: item,
+                        keyword: item.name,
+                        quizId: `${item.name}-write`
+                    };
+                }
+                
                 processing = false;
                 const input = document.getElementById('answer');
                 if (input) input.value = '';
@@ -233,12 +293,28 @@
             processing = true;
             renderAI();
 
-            const correct = userAnswer.toLowerCase() === quiz.answer.toLowerCase();
-            
             setTimeout(() => {
-                feedback = correct 
-                    ? { type: 'correct', msg: `✅ 정답! ${quiz.item.icon} ${quiz.item.name}` }
-                    : { type: 'wrong', msg: `❌ 틀렸어요. 정답은 '${quiz.answer}'입니다.` };
+                let isCorrect = false;
+                
+                if (quiz.type === 'fill') {
+                    // 빈칸 채우기: 정확한 답 확인
+                    isCorrect = userAnswer.toLowerCase() === quiz.answer.toLowerCase();
+                    feedback = isCorrect 
+                        ? { type: 'correct', msg: `✅ 정답! ${quiz.item.icon} ${quiz.item.name}에 대해 완벽하게 알고 계시네요!` }
+                        : { type: 'wrong', msg: `❌ 아쉽지만 틀렸어요. 정답은 '${quiz.answer}'입니다.\n${quiz.item.desc}` };
+                } else {
+                    // 정보 쓰기: 키워드 포함 여부 확인
+                    isCorrect = userAnswer.length >= 5;
+                    feedback = isCorrect
+                        ? { type: 'correct', msg: `✅ 좋아요! ${quiz.item.icon} ${quiz.item.name}에 대해 잘 설명해주셨어요!\n참고: ${quiz.answer}` }
+                        : { type: 'wrong', msg: `❌ 조금 더 자세히 설명해주세요! (최소 5글자 이상)\n힌트: ${quiz.answer}` };
+                }
+                
+                // 정답이면 퀴즈 완료로 표시
+                if (isCorrect) {
+                    solvedQuizzes.add(quiz.quizId);
+                }
+                
                 processing = false;
                 renderAI();
             }, 1000);
@@ -340,20 +416,61 @@
         };
 
         const renderCards = () => {
-            const list = ITEMS.map((item, i) => `
-                <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-yellow-400 hover:shadow-xl transition">
-                    <div class="text-4xl text-center mb-2">${item.icon}</div>
-                    <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
-                    <p class="text-sm text-gray-600">${item.desc}</p>
+            const list = ITEMS.map((item, i) => {
+                const isUnlocked = unlockedCards.has(item.name);
+                const isSelected = selectedCard?.name === item.name;
+                
+                if (!isUnlocked) {
+                    return `
+                        <div class="bg-gray-200 p-4 rounded-xl shadow-lg border-2 border-gray-400 relative">
+                            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl">
+                                <svg data-lucide="lock" class="w-12 h-12 text-white"></svg>
+                            </div>
+                            <div class="text-4xl text-center mb-2 opacity-30">${item.icon}</div>
+                            <h3 class="text-lg font-bold text-gray-400">???</h3>
+                            <p class="text-sm text-gray-400">잠김</p>
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div 
+                        onclick="selectCard(${i})"
+                        class="bg-white p-4 rounded-xl shadow-lg border-2 ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-yellow-400'} hover:shadow-xl transition cursor-pointer"
+                    >
+                        <div class="text-4xl text-center mb-2">${item.icon}</div>
+                        <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
+                        <p class="text-sm text-gray-600">${item.desc}</p>
+                    </div>
+                `;
+            }).join('');
+
+            const detailView = selectedCard ? `
+                <div class="bg-white p-6 rounded-xl shadow-2xl border-2 border-indigo-500 max-w-lg mx-auto mt-6">
+                    <div class="text-6xl text-center mb-4">${selectedCard.icon}</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">${selectedCard.name}</h2>
+                    <p class="text-gray-600 mb-4 text-center">${selectedCard.desc}</p>
+                    <button 
+                        onclick="learnCard()"
+                        class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition flex items-center justify-center gap-2"
+                    >
+                        <svg data-lucide="graduation-cap" class="w-5 h-5"></svg>
+                        AI 학습 시작
+                    </button>
                 </div>
-            `).join('');
+            ` : '';
 
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-yellow-50">
-                    <h1 class="text-3xl font-bold text-yellow-700 mb-6 text-center">📚 카드 도감</h1>
+                    <h1 class="text-3xl font-bold text-yellow-700 mb-2 text-center">📚 카드 도감</h1>
+                    <p class="text-center text-gray-600 mb-6">게임에서 맞춘 카드만 확인할 수 있습니다 (${unlockedCards.size}/${ITEMS.length})</p>
+                    
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
                         ${list}
                     </div>
+                    
+                    ${detailView}
+                    
                     <button 
                         onclick="navigate('game')"
                         class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto"
@@ -366,18 +483,96 @@
 
         const renderAI = () => {
             const answerVal = document.getElementById('answer')?.value || '';
+            const unsolvedQuizzes = getUnsolvedQuizzes();
+            const totalQuizzes = unlockedCards.size * 2;
+            const solvedCount = solvedQuizzes.size;
+
+            // 모든 퀴즈를 다 푼 경우
+            if (unsolvedQuizzes.length === 0 && unlockedCards.size > 0) {
+                root.innerHTML = `
+                    <div class="p-6 min-h-screen bg-blue-50">
+                        <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
+                        
+                        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
+                            <div class="text-6xl mb-4">🎉</div>
+                            <h2 class="text-2xl font-bold text-green-600 mb-4">축하합니다!</h2>
+                            <p class="text-lg text-gray-700 mb-6">
+                                모든 카드에 대한 문제를 다 풀었습니다!<br>
+                                (총 ${totalQuizzes}개 문제 완료)
+                            </p>
+                            <p class="text-md text-gray-600 mb-6">다시 공부하시겠습니까?</p>
+                            
+                            <div class="flex gap-3 justify-center">
+                                <button 
+                                    onclick="resetQuizzes()"
+                                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition"
+                                >
+                                    처음부터 다시
+                                </button>
+                                <button 
+                                    onclick="navigate('game')"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition"
+                                >
+                                    게임으로
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 언락된 카드가 없는 경우
+            if (unlockedCards.size === 0) {
+                root.innerHTML = `
+                    <div class="p-6 min-h-screen bg-blue-50">
+                        <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
+                        
+                        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
+                            <div class="text-6xl mb-4">🔒</div>
+                            <h2 class="text-2xl font-bold text-gray-700 mb-4">학습할 카드가 없습니다</h2>
+                            <p class="text-lg text-gray-600 mb-6">
+                                게임에서 카드를 맞춰 잠금 해제한 후<br>
+                                AI 학습을 시작할 수 있습니다!
+                            </p>
+                            
+                            <button 
+                                onclick="navigate('game')"
+                                class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition"
+                            >
+                                게임 시작하기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
 
             const quizBlock = quiz ? `
                 <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400 mb-4">
-                    <p class="text-md text-gray-700">${quiz.question}</p>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl">${quiz.item.icon}</span>
+                        <span class="text-sm font-semibold text-indigo-600">
+                            ${quiz.type === 'fill' ? '📝 빈칸 채우기' : '✏️ 정보 쓰기'}
+                        </span>
+                    </div>
+                    <p class="text-md text-gray-700 whitespace-pre-line">${quiz.question}</p>
                 </div>
-                <input
-                    type="text"
-                    id="answer"
-                    value="${answerVal}"
-                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4"
-                    placeholder="정답 입력 (예: 김치)"
-                />
+                ${quiz.type === 'fill' ? `
+                    <input
+                        type="text"
+                        id="answer"
+                        value="${answerVal}"
+                        class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4"
+                        placeholder="정답 입력 (예: 한복)"
+                    />
+                ` : `
+                    <textarea
+                        id="answer"
+                        class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4 min-h-24"
+                        placeholder="자유롭게 설명해주세요 (최소 5글자)"
+                    >${answerVal}</textarea>
+                `}
                 <button 
                     onclick="submitAnswer()"
                     class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}"
@@ -388,7 +583,7 @@
             ` : '';
 
             const feedbackBlock = feedback ? `
-                <div class="p-3 rounded-lg font-semibold mt-4 ${feedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                <div class="p-4 rounded-lg font-semibold mt-4 whitespace-pre-line ${feedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                     ${feedback.msg}
                 </div>
             ` : '';
@@ -398,12 +593,17 @@
                     <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
                     
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto">
-                        <p class="text-lg font-semibold text-gray-800 mb-4">
-                            <span class="text-indigo-500">하츄핑:</span> 퀴즈를 풀어볼까요?
-                        </p>
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-lg font-semibold text-gray-800">
+                                <span class="text-indigo-500">하츄핑:</span> K-Culture 퀴즈를 풀어볼까요?
+                            </p>
+                            <span class="text-sm font-semibold text-indigo-600">
+                                ${solvedCount}/${totalQuizzes} 완료
+                            </span>
+                        </div>
 
-                        ${processing ? '<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6"></svg> 처리 중...</div>' : ''}
-                        ${!processing ? quizBlock : ''}
+                        ${processing && !quiz ? '<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6"></svg> 퀴즈 생성 중...</div>' : ''}
+                        ${!processing || quiz ? quizBlock : ''}
                         ${feedbackBlock}
                         
                         <button 
@@ -411,7 +611,7 @@
                             class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}"
                             ${processing ? 'disabled' : ''}
                         >
-                            다음 문제
+                            ${quiz ? '다음 문제' : '퀴즈 시작'}
                         </button>
                     </div>
                     
@@ -467,7 +667,9 @@
 
             switch (page) {
                 case 'game': renderGame(); break;
-                case 'cards': renderCards(); break;
+                case 'cards': 
+                    renderCards();
+                    break;
                 case 'ai': 
                     renderAI();
                     if (!quiz && !processing) makeQuiz();
@@ -523,6 +725,28 @@
         window.navigate = navigate;
         window.makeQuiz = makeQuiz;
         window.submitAnswer = submitAnswer;
+        window.selectCard = (index) => {
+            selectedCard = ITEMS[index];
+            renderCards();
+            if (window.createIcons && window.icons) {
+                window.createIcons({ icons: window.icons });
+            }
+        };
+        window.learnCard = () => {
+            if (selectedCard) {
+                navigate('ai');
+                setTimeout(() => makeQuiz(selectedCard), 100);
+            }
+        };
+        window.resetQuizzes = () => {
+            solvedQuizzes.clear();
+            quiz = null;
+            feedback = null;
+            renderAI();
+            if (window.createIcons && window.icons) {
+                window.createIcons({ icons: window.icons });
+            }
+        };
 
         window.onload = init;
     </script>
