@@ -145,12 +145,10 @@ header {
 }
 .visual {
     width: 100%;
-    height: 800px;
+    height: 900px;
     display: flex;
     justify-content: center;
     position: relative;
-    background: #ffffff;
-    background: linear-gradient(0deg,rgba(255, 255, 255, 1) 0%, rgba(124, 158, 79, 1) 100%);
     background: #ffffff;
     background: linear-gradient(180deg,rgba(255, 255, 255, 1) 0%, rgba(169, 200, 212, 1) 35%, rgba(0, 92, 117, 1) 100%);
 }
@@ -159,17 +157,17 @@ header {
     height: 200px;
     position: absolute;
     top: 43%;
-    right: 20%;
+    right: 21%;
 }
 .visual > img:nth-child(2) {
     right: 9%;
     top: 28%;
-    transform: rotate(80deg);
+    transform: rotate(15deg);
 }
 .visual > img:nth-child(3) {
-    right: 20%;
+    right: 21%;
     top: 70%;
-    transform: rotate(325deg);
+    transform: rotate(33deg);
 }
 .visual >img:nth-child(4) {
     right: 10%;
@@ -181,7 +179,7 @@ header {
     top: 16%;
     transform: rotate(145deg);
 }
-.visual > div {
+.visual > .visualText {
     width: var(--containerSize);
     height: 100%;
     position: absolute;
@@ -199,17 +197,79 @@ header {
     height: 2px;
     background: #fff;
 }
-.visual > div > h1 {
+.visual > .visualText > h1 {
     font-size: 60px;
 }
-.visual > div > h1:nth-child(1) {
+.visual > .visualText > h1:nth-child(1) {
     display: flex;
     align-items: center;
     gap: 30px;
     
 }
-.partIntroContainer {
+.visual > .scrollText {
+    width: 10%;
+    height: 100px;
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    bottom: 0;
+    color: #fff;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 10px;
 
+}
+.visual > h3 {
+    animation: iconscale .4s infinite;
+    position: absolute;
+}
+@keyframes iconscale {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(2);
+    }
+}
+.scrollText > div {
+    width: 5px;
+    height: 50px;
+    background: #fff;
+}
+.partIntroContainer {
+  position: relative;
+  height: 600vh;
+  background: url(./assets/img/introBg.jpg) no-repeat center center;
+  background-size: cover; /* 전체 영역에 맞게 이미지 늘리기 */
+  background-attachment: fixed; /* 스크롤 시 배경 고정 */
+  color: #fff;
+}
+.partIntroContainer > div {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  text-align: center;
+}
+.partIntroContainer h1 {
+  font-size: 3rem;
+  line-height: 1.4;
+}
+.intro1 {
+    width: 100%;
+    position: relative;
+}
+.intro1Img1 {
+    width: 300px;
+    position: absolute;
+    left: 15%;
+    transform: rotate(330deg);
+    display: block;
+}
+.intro1Img2 {
+    width: 300px;
+    position: absolute;
+    bottom: 10%;
+    right: 15%;
+    transform: rotate(30deg);
 }
 @media (max-width: 480px) {
     :root {
