@@ -350,7 +350,9 @@
                     item: item,
                 };
                 isProcessing = false;
-                document.getElementById('ai-answer').value = '';
+                if (document.getElementById('ai-answer')) {
+                    document.getElementById('ai-answer').value = '';
+                }
                 renderAILearning();
             }, 1500);
         };
