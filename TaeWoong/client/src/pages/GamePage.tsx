@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
-import { STAGES, ITEMS } from '../constants/gameData';
+import { STAGES, AVATAR_SHOP } from '../constants/gameData';
 import { GameCard } from '../types';
 
 const GamePage: React.FC = () => {
@@ -39,9 +39,11 @@ const GamePage: React.FC = () => {
   };
 
   const initializeGame = () => {
-    // 8개 아이템 × 2 = 16장 카드 생성
+    if (!stage) return;
+
+    // 현재 스테이지의 아이템 × 2 = 16장 카드 생성
     const pairs: GameCard[] = [];
-    ITEMS.forEach((item) => {
+    stage.items.forEach((item) => {
       pairs.push({
         ...item,
         id: pairs.length,
@@ -140,54 +142,71 @@ const GamePage: React.FC = () => {
 
   if (cards.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-2xl">게임 준비 중...</div>
+      <div className="min-h-screen bg-[#e5f7ff] flex items-center justify-center">
+        <div className="text-[#269dd9] text-2xl font-bold">게임 준비 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-[#e5f7ff]">
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/10 backdrop-blur-md border-b border-white/10">
+      <header className="sticky top-0 z-40 bg-white border-b border-[#bfd0d9] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center mb-4">
-            <button
-              onClick={() => navigate('/stages')}
-              className="py-2 px-4 rounded-lg font-bold text-gray-200 bg-white/10 hover:bg-white/20 transition-all duration-300"
-            >
-              ← 돌아가기
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/stages')}
+                className="py-2 px-4 rounded-lg font-bold text-[#269dd9] bg-[#e0e7eb] hover:bg-[#d4dde4] transition-all duration-300"
+              >
+                ← 돌아가기
+              </button>
+              {/* 좌측 프로필 */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
+                {AVATAR_SHOP.find(a => a.id === playerAvatar)?.image ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
+                    <img
+                      src={AVATAR_SHOP.find(a => a.id === playerAvatar)?.image}
+                      alt="프로필"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-xl">{playerAvatar}</span>
+                )}
+                <span className="text-sm font-semibold text-[#269dd9]">{playerName}</span>
+              </div>
+            </div>
 
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className="text-2xl font-bold text-[#269dd9]">
                 Stage {currentStage}: {stage?.name}
               </h2>
             </div>
 
             <button
               onClick={handleRestartGame}
-              className="py-2 px-4 rounded-lg font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 transition-all duration-300"
+              className="py-2 px-4 rounded-lg font-bold text-white bg-[#e61919] hover:bg-[#b31414] transition-all duration-300"
             >
-              🔄 다시 하기
+              다시 하기
             </button>
           </div>
 
           {/* 통계 */}
           <div className="flex justify-center gap-8 text-center">
-            <div className="px-4 py-2 rounded-lg bg-white/5">
-              <p className="text-sm text-gray-300">시도 횟수</p>
-              <p className="text-3xl font-bold text-purple-300">{moves}</p>
+            <div className="px-4 py-2 rounded-lg bg-[#f5fcff] border border-[#bfd0d9]">
+              <p className="text-sm text-[#2e3538]">시도 횟수</p>
+              <p className="text-3xl font-bold text-[#269dd9]">{moves}</p>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-white/5">
-              <p className="text-sm text-gray-300">진행도</p>
-              <p className="text-3xl font-bold text-pink-300">
+            <div className="px-4 py-2 rounded-lg bg-[#f5fcff] border border-[#bfd0d9]">
+              <p className="text-sm text-[#2e3538]">진행도</p>
+              <p className="text-3xl font-bold text-[#269dd9]">
                 {matchedPairs} / {totalPairs}
               </p>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-white/5">
-              <p className="text-sm text-gray-300">코인</p>
-              <p className="text-3xl font-bold text-yellow-300">🪙 {coins}</p>
+            <div className="px-4 py-2 rounded-lg bg-[#f5fcff] border border-[#bfd0d9]">
+              <p className="text-sm text-[#2e3538]">코인</p>
+              <p className="text-3xl font-bold text-[#269dd9]">{coins}</p>
             </div>
           </div>
         </div>
@@ -224,7 +243,7 @@ const GamePage: React.FC = () => {
                 >
                   {/* 카드 뒷면 */}
                   <div
-                    className="absolute w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg flex items-center justify-center text-5xl font-bold text-white border-4 border-purple-300 hover:border-purple-100 transition-colors"
+                    className="absolute w-full h-full bg-[#269dd9] rounded-lg shadow-lg flex items-center justify-center text-5xl font-bold text-white border-2 border-[#bfd0d9] hover:border-[#269dd9] transition-colors"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden'
@@ -235,7 +254,7 @@ const GamePage: React.FC = () => {
 
                   {/* 카드 앞면 */}
                   <div
-                    className="absolute w-full h-full bg-white rounded-xl shadow-lg overflow-hidden border-4 border-purple-200"
+                    className="absolute w-full h-full bg-white rounded-lg shadow-lg overflow-hidden border-2 border-[#bfd0d9]"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
@@ -243,12 +262,9 @@ const GamePage: React.FC = () => {
                     }}
                   >
                     <img
-                      src={`../../assets/img/${stage?.folder}/${card.img}`}
+                      src={`/img/${stage?.folder}/${card.img}`}
                       alt={card.title}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).classList.add('hidden');
-                      }}
                     />
                   </div>
                 </div>
@@ -261,11 +277,10 @@ const GamePage: React.FC = () => {
       {/* 승리 모달 */}
       {isWon && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md w-full animate-bounce">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-4xl font-bold text-green-600 mb-4">완료!</h2>
-            <p className="text-xl text-gray-700 mb-2">시도 횟수: {moves}회</p>
-            <p className="text-lg text-gray-600 mb-6">{stage?.name} 단계를 클리어했습니다!</p>
+          <div className="bg-white rounded-lg shadow-2xl p-8 text-center max-w-md w-full border-2 border-[#33ccb3]">
+            <h2 className="text-4xl font-bold text-[#33ccb3] mb-4">완료!</h2>
+            <p className="text-xl text-[#2e3538] mb-2">시도 횟수: {moves}회</p>
+            <p className="text-lg text-[#61686b] mb-6">{stage?.name} 단계를 클리어했습니다!</p>
 
             {currentStage < STAGES.length ? (
               <>
@@ -274,18 +289,18 @@ const GamePage: React.FC = () => {
                     navigate('/stages');
                     setGameInitialized(false);
                   }}
-                  className="w-full mb-3 py-3 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                  className="w-full mb-3 py-3 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all duration-300"
                 >
                   다음 단계로
                 </button>
               </>
             ) : (
-              <p className="text-lg font-bold text-purple-600 mb-4">🏆 모든 단계를 완료했습니다!</p>
+              <p className="text-lg font-bold text-[#33ccb3] mb-4">모든 단계를 완료했습니다!</p>
             )}
 
             <button
               onClick={() => navigate('/stages')}
-              className="w-full py-3 px-6 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
+              className="w-full py-3 px-6 rounded-lg font-bold text-[#2e3538] bg-[#e0e7eb] hover:bg-[#d4dde4] transition-all duration-300"
             >
               스테이지 선택
             </button>

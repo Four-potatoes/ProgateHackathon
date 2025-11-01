@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthResponse, LoginCredentials, SignupCredentials } from '../types';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { User } from '../types';
 import { PROFILE_AVATARS } from '../constants/gameData';
 import { authService } from '../services/authService';
 
@@ -150,10 +150,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 로그아웃
   const logout = async () => {
     try {
-      if (!isGuest) {
-        await authService.logout();
+      if (!isGuest && currentUser) {
+        try {
+          await authService.logout();
+        } catch (error) {
+          console.warn('백엔드 로그아웃 실패, 로컬 정리 진행:', error);
+        }
       }
-      
+    } catch (error) {
+      console.error('로그아웃 중 오류:', error);
+    } finally {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('guest_session');
       setCurrentUser(null);
@@ -162,8 +168,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCoins(0);
       setIsLoggedIn(false);
       setIsGuest(false);
-    } catch (error) {
-      console.error('로그아웃 실패:', error);
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { GameCard } from '../types';
-import { ITEMS } from '../constants/gameData';
+import { STAGES } from '../constants/gameData';
 
 interface GameContextType {
   currentStage: number;
@@ -61,7 +61,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [viewedCollections, setViewedCollections] = useState<Set<string>>(new Set());
 
   const initializeGame = useCallback((stageId: number) => {
-    const pairs = [...ITEMS, ...ITEMS].map((item, index) => ({
+    // 현재 스테이지의 아이템 가져오기
+    const stage = STAGES.find(s => s.id === stageId);
+    if (!stage) return;
+
+    const stageItems = stage.items;
+    const pairs = [...stageItems, ...stageItems].map((item, index) => ({
       ...item,
       id: index,
       pairId: item.idx
