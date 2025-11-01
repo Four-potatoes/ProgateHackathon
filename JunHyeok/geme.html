@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Culture Memory Master</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for Card Flip Effect */
+        .perspective {
+            perspective: 1000px;
+        }
+        .transform-style-preserve-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        .card-inner {
+            transition: transform 0.5s;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.3s ease-out forwards;
+        }
+    </style>
+    <!-- Lucide Icons (Used for the UI/UX experience) -->
+    <script type="module">
+        // FIX: Import 'icons' and pass it to createIcons for it to work with all available icons.
+        import { createIcons, icons } from 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/esm/lucide.js';
+        window.addEventListener('load', () => {
+            // Pass the icons object as required by the library to initialize all icons on the page.
+            createIcons({ icons });
+        });
+    </script>
+</head>
+<body class="min-h-screen font-sans bg-gray-50" id="body-container">
+
+    <div id="app" class="min-h-screen">
+        <!-- Content will be rendered here by JavaScript -->
+        <div class="flex justify-center items-center h-screen bg-pink-50">
+            <svg data-lucide="loader-2" class="animate-spin text-indigo-500 w-12 h-12"></svg>
+            <p class="ml-4 text-xl text-gray-700">로미 공주가 마법을 준비 중입니다...</p>
+        </div>
+    </div>
+
+    <!-- Firebase and Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Initialization and Global Variables ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kculture-app-id';
+
+        let app, db, auth;
+        let currentUserId = null;
+        let isAuthReady = false;
+
+        // K-Culture Card Data (8 pairs for a 4x4 grid)
+        const K_CULTURE_ITEMS = [
+            { name: '한복', icon: '👘', desc: '한국의 전통 의상.' },
+            { name: '김치', icon: '🌶️', desc: '한국의 대표적인 발효 음식.' },
+            { name: '비빔밥', icon: '🍚', desc: '밥 위에 나물을 얹어 비벼 먹는 음식.' },
+            { name: '탈춤', icon: '🎭', desc: '탈을 쓰고 추는 전통 연희.' },
+            { name: '태극기', icon: '🇰🇷', desc: '대한민국의 국기.' },
+            { name: '궁궐', icon: '🏯', desc: '조선 시대 왕이 살던 큰 건축물.' },
+            { name: '붓글씨', icon: '🖋️', desc: '붓으로 쓰는 서예.' },
+            { name: '가야금', 'icon': '🎶', desc: '한국의 전통 현악기.' },
+        ];
+
+        let CARD_PAIRS;
+        let totalPairs;
+
+        // --- Game State Management ---
+        let cards = [];
+        let flipped = [];
+        let matched = [];
+        let moves = 0;
+        let isWon = false;
+        let canClick = true;
+        let currentPage = 'game'; // 'game', 'collection', 'ai-learning', 'leaderboard'
+        
+        const appContainer = document.getElementById('app');
+
+        // --- Utility Functions ---
+        const shuffleArray = (array) => {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        };
+
+        const goToPage = (pageName) => {
+            currentPage = pageName;
+            render();
+            // Re-run icon rendering for newly created DOM elements
+            // We use createIcons({ icons }) now, which is defined in the head script.
+            // Since we cannot directly access 'icons' here, we rely on the window.onload 
+            // script to handle the initial run. For subsequent renders, we just call 
+            // createIcons() without arguments which re-renders existing data-lucide elements.
+            // This is a common pattern when the icons object is globally available or handled
+            // by the initial setup. The error was in the head script itself, which is now fixed.
+            // We will remove the redundant check here since the head script handles the icon setup.
+            // However, the original code had this check, so we'll keep it for robustness if the new script
+            // is re-exported to window.createIcons
+            if (window.createIcons) window.createIcons({ icons: window.icons });
+        };
+
+        // --- Game Logic ---
+
+        const initializeCardData = () => {
+             CARD_PAIRS = [...K_CULTURE_ITEMS, ...K_CULTURE_ITEMS].map((item, index) => ({
+                ...item,
+                id: index,
+            }));
+            totalPairs = CARD_PAIRS.length / 2;
+        }
+
+        const initializeGame = () => {
+            initializeCardData();
+            cards = shuffleArray([...CARD_PAIRS]);
+            flipped = [];
+            matched = [];
+            moves = 0;
+            isWon = false;
+            canClick = true;
+            renderGame();
+        };
+
+        const checkWinCondition = () => {
+            if (matched.length > 0 && matched.length === cards.length) {
+                isWon = true;
+                submitScore(moves);
+                renderGame(); // Re-render to show win modal
+            }
+        };
+
+        const submitScore = async (finalMoves) => {
+            if (!db || !currentUserId) {
+                console.error("Database or User ID not ready.");
+                return;
+            }
+            
+            const rankingCollectionPath = `artifacts/${appId}/public/data/memory_game_ranking`;
+            try {
+                await addDoc(collection(db, rankingCollectionPath), {
+                    playerUid: currentUserId,
+                    moves: finalMoves,
+                    timestamp: serverTimestamp(),
+                });
+                console.log("Score submitted successfully:", finalMoves);
+            } catch (error) {
+                console.error("Error submitting score:", error);
+            }
+        };
+
+
+        const handleCardClick = (cardId) => {
+            if (!canClick || flipped.length === 2 || flipped.includes(cardId) || matched.includes(cardId) || isWon) {
+                return;
+            }
+
+            // Flip the card and update the state visually
+            flipped.push(cardId);
+            renderGame(); 
+            
+            if (flipped.length === 2) {
+                canClick = false;
+                moves++;
+                renderGame(); // Update moves count
+                
+                const [firstId, secondId] = flipped;
+                
+                const item1 = cards.find(c => c.id === firstId);
+                const item2 = cards.find(c => c.id === secondId);
+
+                if (item1 && item2 && item1.name === item2.name) {
+                    // Match found
+                    matched.push(firstId, secondId);
+                    flipped = [];
+                    canClick = true;
+                    checkWinCondition();
+                    renderGame();
+                } else {
+                    // No match: flip back after delay
+                    setTimeout(() => {
+                        flipped = [];
+                        canClick = true;
+                        renderGame(); // Re-render to flip them back
+                    }, 1000);
+                }
+            }
+        };
+
+        // --- Renderer Functions ---
+
+        const renderNavButton = (icon, label, page) => `
+            <button 
+                onclick="window.goToPage('${page}')"
+                class="flex items-center space-x-2 bg-purple-500 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-purple-600 transition duration-300 text-sm"
+            >
+                <svg data-lucide="${icon}" class="w-5 h-5"></svg>
+                <span>${label}</span>
+            </button>
+        `;
+
+        const renderCard = (card) => {
+            const isFlipped = flipped.includes(card.id) || matched.includes(card.id);
+            const isMatched = matched.includes(card.id);
+            const cursorClass = isMatched ? 'cursor-default' : 'cursor-pointer';
+
+            return `
+                <div 
+                    id="card-${card.id}"
+                    class="aspect-square perspective ${cursorClass}"
+                    onclick="window.handleCardClick(${card.id})"
+                >
+                    <div class="relative w-full h-full card-inner transform-style-preserve-3d 
+                        ${isFlipped ? 'rotate-y-180' : ''}"
+                    >
+                        <!-- Card Back (Teenieping Theme) -->
+                        <div class="absolute backface-hidden w-full h-full bg-indigo-500 rounded-lg shadow-xl border-4 border-indigo-700 flex items-center justify-center">
+                            <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
+                        </div>
+                        
+                        <!-- Card Front (K-Culture Content) -->
+                        <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-1 md:p-2 rotate-y-180">
+                            <span class="text-2xl md:text-4xl">${card.icon}</span>
+                            <span class="text-xs md:text-sm font-semibold mt-1 text-gray-800 text-center">${card.name}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderGame = () => {
+            const cardGrid = cards.map(renderCard).join('');
+            
+            let winModal = '';
+            if (isWon) {
+                winModal = `
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center animate-pop-in">
+                            <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 캐치 성공! 축하합니다! 🎉</h2>
+                            <p class="text-lg text-gray-700 mb-6">당신은 <strong>${moves}번</strong> 만에 모든 K-Culture 티니핑을 캐치했습니다.</p>
+                            <button 
+                                onclick="window.goToPage('leaderboard')"
+                                class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 text-lg"
+                            >
+                                <svg data-lucide="trophy" class="inline w-5 h-5 mr-2"></svg> 랭킹 확인 및 기록 등록
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            appContainer.innerHTML = `
+                <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
+                    <h1 class="text-4xl font-extrabold text-indigo-600 my-4 tracking-tight">
+                        <svg data-lucide="sparkles" class="inline w-6 h-6 mr-2 text-yellow-500"></svg>
+                        K-Culture Memory Master
+                    </h1>
+
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mb-6">
+                        <div class="flex justify-between items-center mb-4 border-b pb-3">
+                            <div class="flex flex-col items-start">
+                                <span class="text-xl font-bold text-gray-700">시도 횟수: <span class="text-indigo-500">${moves}</span></span>
+                                <span class="text-sm text-gray-500 mt-1">남은 쌍: ${totalPairs - (matched.length / 2)} / ${totalPairs}</span>
+                            </div>
+                            <button 
+                                onclick="window.initializeGame()"
+                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 flex items-center"
+                            >
+                                <svg data-lucide="rotate-ccw" class="w-4 h-4 mr-1"></svg> 재시작
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-3 md:gap-4">
+                            ${cardGrid}
+                        </div>
+                    </div>
+                    
+                    ${winModal}
+
+                    <!-- Navigation Buttons -->
+                    <div class="mt-6 flex flex-wrap justify-center gap-3">
+                        ${renderNavButton('library', '카드 도감', 'collection')}
+                        ${renderNavButton('graduation-cap', 'AI 학습', 'ai-learning')}
+                        ${renderNavButton('trophy', '랭킹', 'leaderboard')}
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderCollection = () => {
+            const cardList = K_CULTURE_ITEMS.map((item, index) => `
+                <div key=${index} class="bg-white p-4 rounded-xl shadow-lg border-2 border-yellow-400">
+                    <div class="text-4xl text-center mb-2">${item.icon}</div>
+                    <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
+                    <p class="text-sm text-gray-600">${item.desc}</p>
+                </div>
+            `).join('');
+
+            appContainer.innerHTML = `
+                <div class="p-6 min-h-screen bg-yellow-50">
+                    <h1 class="text-3xl font-bold text-yellow-700 mb-6 border-b pb-3">📚 수집 카드 도감</h1>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        ${cardList}
+                    </div>
+                    <button 
+                        onclick="window.goToPage('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                    >
+                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                    </button>
+                </div>
+            `;
+        };
+
+        // --- AI Learning Logic & Renderer (Placeholder) ---
+        let currentQuiz = null;
+        let aiFeedback = null;
+        let isProcessing = false;
+
+        const generateQuiz = () => {
+            isProcessing = true;
+            aiFeedback = null;
+            renderAILearning();
+
+            setTimeout(() => {
+                const item = K_CULTURE_ITEMS[Math.floor(Math.random() * K_CULTURE_ITEMS.length)];
+                currentQuiz = {
+                    question: `다음 설명이 나타내는 K-Culture 항목은 무엇일까요? "${item.desc}"`,
+                    correctAnswer: item.name,
+                    item: item,
+                };
+                isProcessing = false;
+                document.getElementById('ai-answer').value = '';
+                renderAILearning();
+            }, 1500);
+        };
+
+        const handleSubmit = () => {
+            const userAnswer = document.getElementById('ai-answer').value.trim();
+            if (!currentQuiz || isProcessing || userAnswer === '') return;
+
+            isProcessing = true;
+            renderAILearning();
+
+            const isCorrect = userAnswer.toLowerCase() === currentQuiz.correctAnswer.toLowerCase();
+            
+            setTimeout(() => {
+                if (isCorrect) {
+                    aiFeedback = { type: 'correct', message: `✅ 정답! ${currentQuiz.item.icon} ${currentQuiz.item.name}에 대해 완벽하게 이해하셨군요!` };
+                } else {
+                    aiFeedback = { type: 'incorrect', message: `❌ 아쉽지만 틀렸어요. ${currentQuiz.item.name}에 대한 설명을 다시 살펴볼까요?` };
+                }
+                isProcessing = false;
+                renderAILearning();
+            }, 1000);
+        };
+
+        const renderAILearning = () => {
+            // Retrieve current input value before re-rendering
+            const currentAnswerValue = document.getElementById('ai-answer')?.value || '';
+
+            const quizContent = currentQuiz ? `
+                <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400">
+                    <p class="text-md text-gray-700">${currentQuiz.question}</p>
+                </div>
+                <input
+                    type="text"
+                    id="ai-answer"
+                    value="${currentAnswerValue}"
+                    oninput="this.setAttribute('value', this.value)"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    placeholder="정답을 입력하세요 (예: 김치)"
+                />
+                <button 
+                    onclick="window.handleSubmit()"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 flex items-center justify-center ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
+                    ${isProcessing ? 'disabled' : ''}
+                >
+                    <svg data-lucide="check" class="w-5 h-5 mr-2"></svg> 정답 확인
+                </button>
+            ` : '';
+
+            const feedbackContent = aiFeedback ? `
+                <div class="p-3 rounded-lg font-semibold ${aiFeedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    ${aiFeedback.message}
+                </div>
+            ` : '';
+
+
+            appContainer.innerHTML = `
+                <div class="p-6 min-h-screen bg-blue-50">
+                    <h1 class="text-3xl font-bold text-blue-700 mb-6 border-b pb-3 flex items-center">
+                        <svg data-lucide="graduation-cap" class="w-6 h-6 mr-2"></svg> AI 기반 학습 센터
+                    </h1>
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto space-y-4">
+                        <p class="text-lg font-semibold text-gray-800">
+                            <span class="text-indigo-500 font-extrabold">하츄핑:</span> 캐치한 카드에 대한 퀴즈를 풀어볼까요? (LLM 연동 예정)
+                        </p>
+
+                        ${isProcessing ? 
+                            `<div class="text-center text-indigo-500"><svg data-lucide="loader-2" class="animate-spin inline mr-2 w-6 h-6"></svg> 퀴즈 생성/평가 중...</div>` 
+                            : ''
+                        }
+
+                        ${!isProcessing ? quizContent : ''}
+                        
+                        ${feedbackContent}
+                        
+                        <button 
+                            onclick="window.generateQuiz()"
+                            class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${isProcessing ? 'disabled' : ''}
+                        >
+                            다음 문제 풀기
+                        </button>
+                    </div>
+                    
+                    <button 
+                        onclick="window.goToPage('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                    >
+                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                    </button>
+                </div>
+            `;
+            // Re-run icon rendering after innerHTML update
+            if (window.createIcons && window.icons) { // Check for icons globally if available
+                window.createIcons({ icons: window.icons });
+            }
+        };
+
+        // --- Leaderboard Logic & Renderer ---
+
+        const renderLeaderboard = (rankings, isLoading) => {
+            let rankingContent = '';
+            if (isLoading) {
+                rankingContent = `<div class="p-4 flex justify-center items-center"><svg data-lucide="loader-2" class="animate-spin text-blue-500 w-6 h-6"></svg></div>`;
+            } else if (rankings.length === 0) {
+                rankingContent = `<p class="text-center text-gray-500">아직 랭킹 기록이 없습니다. 첫 승리자가 되어보세요!</p>`;
+            } else {
+                rankingContent = rankings.map((rank, index) => `
+                    <div 
+                        class="flex justify-between items-center p-3 rounded-lg ${
+                            rank.playerUid === currentUserId ? 'bg-yellow-100 font-extrabold shadow-md' : 'bg-gray-50'
+                        }"
+                    >
+                        <span class="text-xl font-bold ${index === 0 ? 'text-yellow-600' : 'text-gray-700'}">${index + 1}.</span>
+                        <span class="flex-1 ml-4 truncate text-sm">
+                            ${rank.playerUid === currentUserId ? '나 (You)' : `ID: ${rank.playerUid.substring(0, 8)}...`}
+                        </span>
+                        <span class="text-lg font-mono text-indigo-600">${rank.moves} Moves</span>
+                    </div>
+                `).join('');
+            }
+
+            appContainer.innerHTML = `
+                <div class="p-6 min-h-screen bg-purple-50">
+                    <h1 class="text-3xl font-bold text-purple-700 mb-6 border-b pb-3 flex items-center justify-center">
+                        <svg data-lucide="trophy" class="w-6 h-6 mr-2"></svg> 명예의 전당
+                    </h1>
+                    
+                    <div class="p-4 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
+                        <h2 class="text-2xl font-bold mb-4 text-center text-indigo-700 border-b pb-2">🏆 명예의 전당 (최소 시도)</h2>
+                        <div class="space-y-2">
+                            ${rankingContent}
+                        </div>
+                        <div class="mt-4 text-xs text-gray-400 truncate">
+                            당신의 유저 ID: ${currentUserId || '로딩 중...'} (최고 기록을 확인하세요!)
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onclick="window.goToPage('game')"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 flex items-center mx-auto"
+                    >
+                        <svg data-lucide="home" class="w-5 h-5 mr-2"></svg> 게임으로 돌아가기
+                    </button>
+                </div>
+            `;
+            // Re-run icon rendering after innerHTML update
+            if (window.createIcons && window.icons) { // Check for icons globally if available
+                window.createIcons({ icons: window.icons });
+            }
+        };
+
+        const setupLeaderboardListener = () => {
+            if (!db) return;
+            const rankingCollectionPath = `artifacts/${appId}/public/data/memory_game_ranking`;
+
+            const q = query(
+                collection(db, rankingCollectionPath),
+                orderBy("moves", "asc"),
+                orderBy("timestamp", "asc"),
+                limit(10)
+            );
+
+            onSnapshot(q, (snapshot) => {
+                const newRankings = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                if (currentPage === 'leaderboard') {
+                    renderLeaderboard(newRankings, false);
+                }
+            }, (error) => {
+                console.error("Error fetching rankings: ", error);
+                if (currentPage === 'leaderboard') {
+                    renderLeaderboard([], false);
+                }
+            });
+        };
+
+        // --- Master Render Function ---
+        const render = () => {
+            if (!isAuthReady) {
+                // Initial loading state is already in HTML, do nothing
+                return;
+            }
+
+            switch (currentPage) {
+                case 'game':
+                    renderGame();
+                    break;
+                case 'collection':
+                    renderCollection();
+                    break;
+                case 'ai-learning':
+                    renderAILearning();
+                    // Initial load/re-load of quiz data if necessary
+                    if (!currentQuiz && !isProcessing) {
+                        generateQuiz();
+                    }
+                    break;
+                case 'leaderboard':
+                    renderLeaderboard([], true); // Render with loading state first
+                    setupLeaderboardListener();
+                    break;
+                default:
+                    appContainer.innerHTML = '<h1 class="text-red-500 text-center mt-10">페이지 오류</h1>';
+            }
+        };
+
+        // --- Initial Setup (Run on window load) ---
+        async function initFirebase() {
+            if (!firebaseConfig) { 
+                console.warn("Firebase config missing. Running in non-persistent mode.");
+                currentUserId = crypto.randomUUID();
+                isAuthReady = true;
+                initializeGame();
+                render();
+                return;
+            }
+            
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            // 1. Set up Auth Listener
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                } else {
+                    currentUserId = crypto.randomUUID();
+                }
+                isAuthReady = true;
+                initializeGame();
+                render();
+                // Ensure icons are created after auth is ready and initial render
+                if (window.createIcons && window.icons) {
+                    window.createIcons({ icons: window.icons });
+                }
+            });
+
+            // 2. Perform Initial Sign-In
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Sign-In Error:", error);
+            }
+        }
+        
+        // Export functions to global scope so they can be called from HTML onclick attributes
+        window.handleCardClick = handleCardClick;
+        window.initializeGame = initializeGame;
+        window.goToPage = goToPage;
+        window.generateQuiz = generateQuiz;
+        window.handleSubmit = handleSubmit;
+
+        // Start everything
+        window.onload = initFirebase;
+
+    </script>
+</body>
+</html>
