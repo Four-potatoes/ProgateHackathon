@@ -7,33 +7,40 @@
     <link rel="icon" href="../favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    <!-- Backend API Configuration -->
+    <script>
+        // 백엔드 API URL
+        const API_BASE_URL = 'http://localhost:5000/api';
 
-        // Firebase configuration - 여기에 실제 Firebase 프로젝트 설정을 넣어주세요
-        const firebaseConfig = {
-            apiKey: "AIzaSyDEMOKEY123456789",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef123456"
+        // 인증 토큰 저장/로드
+        let authToken = localStorage.getItem('auth_token');
+
+        // API 호출 헬퍼 함수
+        const apiCall = async (endpoint, options = {}) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API 요청 실패');
+            }
+
+            return response.json();
         };
 
-        window.firebaseApp = initializeApp(firebaseConfig);
-        window.firebaseAuth = getAuth(window.firebaseApp);
-        window.firebaseDb = getFirestore(window.firebaseApp);
-        window.GoogleAuthProvider = GoogleAuthProvider;
-        window.signInWithPopup = signInWithPopup;
-        window.signOut = signOut;
-        window.onAuthStateChanged = onAuthStateChanged;
-        window.firestoreDoc = doc;
-        window.firestoreSetDoc = setDoc;
-        window.firestoreGetDoc = getDoc;
-        window.firestoreUpdateDoc = updateDoc;
+        window.API_BASE_URL = API_BASE_URL;
+        window.apiCall = apiCall;
     </script>
 
     <style>
@@ -56,6 +63,12 @@
 
         /* 중앙 정렬 */
         .text-center { text-align: center; }
+
+        /* 프로필 아바타 선택 애니메이션 */
+        .profile-selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px #6366f1;
+        }
 
         /* 프로필 드롭다운 */
         .profile-dropdown {
@@ -107,6 +120,7 @@
         let completedStages = []; // 완료된 스테이지
         let playerName = '';
         let playerNameSet = false;
+        let playerAvatar = '😊'; // 플레이어 아바타
 
         // Google 사용자 정보
         let currentUser = null;
@@ -140,18 +154,69 @@
         // ===================================
         async function loadData() {
             try {
+                // URL에서 토큰 확인 (Google OAuth 콜백)
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenFromUrl = urlParams.get('token');
+
+                if (tokenFromUrl) {
+                    authToken = tokenFromUrl;
+                    localStorage.setItem('auth_token', authToken);
+                    // URL에서 토큰 제거
+                    window.history.replaceState({}, document.title, '/game');
+
+                    // 백엔드에서 사용자 정보 가져오기
+                    try {
+                        const userData = await apiCall('/auth/me');
+                        currentUser = userData.user;
+                        userProfile = {
+                            uid: currentUser.id,
+                            email: currentUser.email,
+                            displayName: currentUser.name,
+                            photoURL: currentUser.profilePicture
+                        };
+                        playerName = currentUser.name;
+                        playerNameSet = true;
+
+                        // 게임 진행도 로드
+                        if (userData.progress) {
+                            unlockedStages = JSON.parse(userData.progress.unlocked_stages) || [1];
+                            completedStages = JSON.parse(userData.progress.completed_stages) || [];
+                            currentStage = userData.progress.current_stage || 1;
+                            playerAvatar = userData.progress.player_avatar || '😊';
+                        }
+
+                        console.log('Google 로그인 성공:', playerName);
+                        currentPage = 'stages'; // 로그인 후 스테이지 선택 화면으로
+                    } catch (error) {
+                        console.error('사용자 정보 로드 실패:', error);
+                    }
+                }
+
                 const response = await fetch('../data/stages.json');
                 STAGES_DATA = await response.json();
 
-                // 로컬스토리지에서 진행도 불러오기
-                const saved = localStorage.getItem('game_progress');
-                if (saved) {
-                    const progress = JSON.parse(saved);
-                    unlockedStages = progress.unlockedStages || [1];
-                    completedStages = progress.completedStages || [];
-                    currentStage = progress.currentStage || 1;
-                    playerName = progress.playerName || '';
-                    playerNameSet = progress.playerNameSet || false;
+                // 토큰이 있으면 백엔드에서 데이터 로드
+                if (authToken && !tokenFromUrl) {
+                    try {
+                        const userData = await apiCall('/auth/me');
+                        currentUser = userData.user;
+                        if (userData.progress) {
+                            unlockedStages = JSON.parse(userData.progress.unlocked_stages) || [1];
+                            completedStages = JSON.parse(userData.progress.completed_stages) || [];
+                            currentStage = userData.progress.current_stage || 1;
+                            playerAvatar = userData.progress.player_avatar || '😊';
+                            playerName = currentUser.name;
+                            playerNameSet = true;
+                            currentPage = 'stages';
+                        }
+                    } catch (error) {
+                        console.error('백엔드 데이터 로드 실패:', error);
+                        // 실패시 로컬 저장소에서 로드
+                        loadFromLocalStorage();
+                    }
+                } else {
+                    // 로컬스토리지에서 진행도 불러오기
+                    loadFromLocalStorage();
                 }
 
                 const savedRanking = localStorage.getItem('ranking_data');
@@ -163,10 +228,23 @@
             }
         }
 
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('game_progress');
+            if (saved) {
+                const progress = JSON.parse(saved);
+                unlockedStages = progress.unlockedStages || [1];
+                completedStages = progress.completedStages || [];
+                currentStage = progress.currentStage || 1;
+                playerName = progress.playerName || '';
+                playerNameSet = progress.playerNameSet || false;
+            }
+        }
+
         // ===================================
         // 저장 함수
         // ===================================
         const saveProgress = () => {
+            // 로컬 저장소에 저장 (1회용 로그인)
             localStorage.setItem('game_progress', JSON.stringify({
                 unlockedStages,
                 completedStages,
@@ -175,8 +253,8 @@
                 playerNameSet
             }));
 
-            // Google 로그인 상태면 Firestore에도 저장
-            if (currentUser) {
+            // Google 로그인 상태면 백엔드 DB에도 저장
+            if (authToken && currentUser) {
                 saveUserData();
             }
         };
@@ -186,40 +264,22 @@
         };
 
         // ===================================
-        // Google 인증 함수
+        // Google 인증 함수 (백엔드 API 사용)
         // ===================================
         const signInWithGoogle = async () => {
             try {
-                const provider = new window.GoogleAuthProvider();
-                const result = await window.signInWithPopup(window.firebaseAuth, provider);
-                currentUser = result.user;
-                userProfile = {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    displayName: currentUser.displayName,
-                    photoURL: currentUser.photoURL
-                };
-
-                // Firestore에서 사용자 데이터 로드
-                await loadUserData();
-
-                // 이름이 없으면 Google 이름 사용
-                if (!playerName && userProfile.displayName) {
-                    playerName = userProfile.displayName;
-                    playerNameSet = true;
-                    saveProgress();
-                }
-
-                render();
+                // 백엔드 Google OAuth URL로 리다이렉트
+                window.location.href = `${API_BASE_URL}/auth/google`;
             } catch (error) {
                 console.error('Google 로그인 실패:', error);
-                alert('로그인에 실패했습니다. 다시 시도해주세요.');
             }
         };
 
         const signOutUser = async () => {
             try {
-                await window.signOut(window.firebaseAuth);
+                await apiCall('/auth/logout', { method: 'POST' });
+                authToken = null;
+                localStorage.removeItem('auth_token');
                 currentUser = null;
                 userProfile = {
                     uid: null,
@@ -234,45 +294,33 @@
         };
 
         const loadUserData = async () => {
-            if (!currentUser) return;
+            if (!authToken) return;
 
             try {
-                const userDoc = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
-                const docSnap = await window.firestoreGetDoc(userDoc);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    unlockedStages = data.unlockedStages || [1];
-                    completedStages = data.completedStages || [];
-                    currentStage = data.currentStage || 1;
-                    playerName = data.playerName || userProfile.displayName;
-                    playerNameSet = data.playerNameSet || false;
-                } else {
-                    // 새 사용자 - 초기 데이터 저장
-                    await saveUserData();
-                }
+                const data = await apiCall('/game/progress');
+                unlockedStages = data.unlockedStages || [1];
+                completedStages = data.completedStages || [];
+                currentStage = data.currentStage || 1;
+                playerName = data.playerName || userProfile.displayName;
+                playerNameSet = !!playerName;
             } catch (error) {
                 console.error('사용자 데이터 로드 실패:', error);
             }
         };
 
         const saveUserData = async () => {
-            if (!currentUser) return;
+            if (!authToken) return;
 
             try {
-                const userDoc = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
-                await window.firestoreSetDoc(userDoc, {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    displayName: currentUser.displayName,
-                    photoURL: currentUser.photoURL,
-                    unlockedStages,
-                    completedStages,
-                    currentStage,
-                    playerName,
-                    playerNameSet,
-                    lastUpdated: new Date().toISOString()
-                }, { merge: true });
+                await apiCall('/game/progress', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        currentStage,
+                        unlockedStages,
+                        completedStages,
+                        playerAvatar
+                    })
+                });
             } catch (error) {
                 console.error('사용자 데이터 저장 실패:', error);
             }
@@ -295,9 +343,13 @@
             render();
         };
 
-        const setPlayerName = (name) => {
+        const setPlayerName = async (name) => {
             playerName = name.trim() || '익명';
             playerNameSet = true;
+
+            // 간단 로그인은 로컬 저장소만 사용 (1회용)
+            console.log('1회용 로그인:', playerName, '(Google 로그인하면 영구 저장됩니다)');
+
             saveProgress();
             goToPage('stages');
         };
@@ -455,30 +507,60 @@
         });
 
         const renderWelcome = () => {
+            const PROFILE_AVATARS = ['😊', '😎', '🥳', '🤓', '😇', '🤗', '🥰', '😁', '🙂', '😄', '😃', '😀', '🤩', '😍', '🥸', '😏'];
+
+            const profileGrid = PROFILE_AVATARS.map((avatar) => `
+                <button onclick="window.selectAvatar('${avatar}')" class="w-12 h-12 text-2xl rounded-full border-2 border-gray-300 hover:border-indigo-400 transition-all duration-200 ${playerAvatar === avatar ? 'profile-selected border-indigo-500' : ''}">
+                    ${avatar}
+                </button>
+            `).join('');
+
             appContainer.innerHTML = `
-                ${renderHeader()}
-                <div class="min-h-screen flex items-center justify-center p-8">
-                    <div class="bg-white rounded-3xl shadow-2xl p-12 max-w-md w-full text-center">
-                        <h1 class="text-4xl font-bold text-gray-800 mb-6">K-Everything<br/>Memory Game</h1>
-                        <p class="text-gray-600 mb-8">한국 문화재, 음식, 영화를 배우는<br/>재미있는 카드 게임</p>
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-4">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                        <div class="mb-6">
+                            <div class="text-6xl mb-4">🎮</div>
+                            <h1 class="text-4xl font-extrabold text-indigo-600 mb-2">
+                                K-Everything<br>Memory Game
+                            </h1>
+                            <p class="text-gray-600">한국 문화재, 음식, 영화를 배우는 카드 게임</p>
+                        </div>
 
                         <div class="mb-6">
-                            <label class="block text-left text-sm font-bold text-gray-700 mb-2">플레이어 이름</label>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                프로필 아바타 선택
+                            </label>
+                            <div class="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                                ${profileGrid}
+                            </div>
+
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                이름을 입력해주세요
+                            </label>
                             <input
                                 type="text"
                                 id="playerNameInput"
-                                placeholder="이름을 입력하세요"
-                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-center text-lg"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="예: 홍길동"
                                 maxlength="10"
                             />
                         </div>
 
                         <button
                             onclick="window.startGameWithName()"
-                            class="w-full py-4 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 text-lg"
+                            class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105"
                         >
-                            게임 시작
+                            게임 시작하기
                         </button>
+
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <p class="text-sm text-gray-600 mb-3">📚 게임 방법</p>
+                            <div class="text-xs text-gray-500 space-y-1">
+                                <p>• 같은 카드를 찾아 맞추세요</p>
+                                <p>• 스테이지를 클리어하면 다음 단계 잠금 해제</p>
+                                <p>• 도감에서 클리어한 항목을 확인할 수 있어요</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -535,15 +617,41 @@
                 `;
             }).join('');
 
+            // Google 로그인 안내 (로그인하지 않은 경우)
+            const googleLoginAlert = !currentUser ? `
+                <div class="max-w-3xl mx-auto mb-8">
+                    <div class="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl">✅</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-green-900 mb-2">로컬 저장소 모드로 플레이 중</h3>
+                                <p class="text-sm text-green-700 mb-2">
+                                    현재 브라우저에 게임 기록이 저장됩니다.<br>
+                                    이대로 플레이해도 완벽하게 작동합니다!
+                                </p>
+                                <p class="text-xs text-gray-600 italic">
+                                    💡 팁: Google 로그인은 개발자가 Firebase를 설정하면 사용할 수 있어요.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : '';
+
             appContainer.innerHTML = `
                 ${renderHeader()}
                 <div class="min-h-screen p-8">
                     <div class="max-w-7xl mx-auto">
                         <div class="text-center mb-12">
                             <h1 class="text-5xl font-bold text-gray-800 mb-4">K-Everything Memory Game</h1>
-                            <p class="text-xl text-gray-600 mb-2">플레이어: ${playerName}</p>
+                            <div class="flex items-center justify-center gap-2 mb-2">
+                                <span class="text-2xl">${playerAvatar}</span>
+                                <p class="text-xl text-gray-600">${playerName}</p>
+                            </div>
                             <p class="text-lg text-gray-500">한국 문화재부터 음식, 영화까지 단계별로 도전해보세요</p>
                         </div>
+
+                        ${googleLoginAlert}
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                             ${stagesHtml}
@@ -805,39 +913,36 @@
         async function init() {
             await loadData();
 
-            // Firebase 인증 상태 감지
-            window.onAuthStateChanged(window.firebaseAuth, async (user) => {
-                if (user) {
-                    currentUser = user;
-                    userProfile = {
-                        uid: user.uid,
-                        email: user.email,
-                        displayName: user.displayName,
-                        photoURL: user.photoURL
-                    };
+            // Firebase 인증 상태 감지 (Firebase가 초기화된 경우에만)
+            if (window.firebaseInitialized && window.firebaseAuth) {
+                window.onAuthStateChanged(window.firebaseAuth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        userProfile = {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL
+                        };
 
-                    // Firestore에서 사용자 데이터 로드
-                    await loadUserData();
-                } else {
-                    currentUser = null;
-                    userProfile = {
-                        uid: null,
-                        email: null,
-                        displayName: null,
-                        photoURL: null
-                    };
-                }
+                        // Firestore에서 사용자 데이터 로드
+                        await loadUserData();
+                    } else {
+                        currentUser = null;
+                        userProfile = {
+                            uid: null,
+                            email: null,
+                            displayName: null,
+                            photoURL: null
+                        };
+                    }
 
-                render();
-            });
-
-            // 이름이 설정되어 있으면 스테이지로, 아니면 환영 페이지로
-            if (playerNameSet && playerName) {
-                currentPage = 'stages';
-            } else {
-                currentPage = 'welcome';
+                    render();
+                });
             }
 
+            // 항상 Welcome 페이지부터 시작 (간단 로그인)
+            currentPage = 'welcome';
             render();
         }
 
@@ -847,6 +952,10 @@
         window.goToPage = goToPage;
         window.signInWithGoogle = signInWithGoogle;
         window.signOutUser = signOutUser;
+        window.selectAvatar = (avatar) => {
+            playerAvatar = avatar;
+            render();
+        };
         window.startGameWithName = () => {
             const input = document.getElementById('playerNameInput');
             const name = input?.value.trim() || '익명';

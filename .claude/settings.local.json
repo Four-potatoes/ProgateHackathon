@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(\"TaeWoong/src/index.html\")",
-      "Bash(python -m http.server:*)"
+      "Bash(python -m http.server:*)",
+      "Bash(start http://localhost/phpmyadmin)",
+      "Bash(start https://console.cloud.google.com/apis/credentials/consent)",
+      "Bash(start https://console.cloud.google.com/apis/library/people.googleapis.com)"
     ],
     "deny": [],
     "ask": []
