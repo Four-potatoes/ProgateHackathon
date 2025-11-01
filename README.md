@@ -3,7 +3,7 @@
 ## Team name : 사차원 감자들
 
 <details>
-<summary><strong>member</strong>Click!!!</summary>
+<summary>member</summary>
   
 대장   : 가천대 최웅식
 부대장 : 가톨릭대 제준혁
