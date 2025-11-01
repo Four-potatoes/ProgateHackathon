@@ -690,19 +690,14 @@
             const isFlip = flipped.includes(card.id) || matched.includes(card.id);
             const isMatch = matched.includes(card.id);
             const cursor = isMatch ? 'cursor-default' : 'cursor-pointer';
-            const cardNum = ITEMS.findIndex(item => item.name === card.name) + 1;
             return `
                 <div class="aspect-square perspective ${cursor} card-hover" onclick="clickCard(${card.id})">
                     <div class="relative w-full h-full card-transition transform-3d ${isFlip ? 'flip' : ''}">
-                        <!-- 앞면 -->
+                        <!-- 앞면 (뒷면) -->
                         <div class="absolute backface-hidden w-full h-full glass-effect-strong rounded-2xl shadow-2xl border-2 border-purple-500 flex flex-col items-center justify-center p-4">
-                            <div class="absolute top-2 right-2 text-xs text-purple-300 font-bold">No.${cardNum}</div>
-                            <svg data-lucide="sparkles" class="w-10 h-10 text-yellow-300 animate-pulse mb-2"></svg>
-                            <span class="text-4xl mb-2">${card.icon}</span>
-                            <span class="text-sm font-bold text-white">${card.name}</span>
-                            <span class="text-xs text-purple-200 mt-2">클릭하여 뒤집기</span>
+                            <svg data-lucide="sparkles" class="w-12 h-12 text-yellow-300 animate-pulse"></svg>
                         </div>
-                        <!-- 뒷면 -->
+                        <!-- 뒷면 (정답) -->
                         <div class="absolute backface-hidden w-full h-full bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-2xl border-4 ${card.color} border-opacity-50 flex flex-col p-3 flip">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-lg font-bold text-gray-800">${card.name}</span>
