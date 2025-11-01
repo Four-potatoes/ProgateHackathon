@@ -96,6 +96,9 @@
         let playerAvatar = '😊'; // 플레이어 프로필 아바타
         let gameStarted = false; // 게임 시작 여부
         
+        // 어드민 클리어 표시용 상태 추가
+        let adminCleared = false;
+
         // UI 상태
         let page = 'game';
         let quiz = null;
@@ -195,8 +198,9 @@
             
             // 최고 점수로 저장
             saveScore(1);
-            
-            alert('🎉 어드민 권한으로 게임이 클리어되었습니다!');
+
+            adminCleared = true; // 어드민 클리어 상태
+
             renderGame();
         };
 
@@ -211,6 +215,7 @@
             moves = 0;
             won = false;
             clickable = true;
+            adminCleared = false; // 게임 재시작시 어드민 플래그 초기화
             renderGame();
         };
 
@@ -527,6 +532,13 @@
                             <p class="text-lg text-gray-700"><strong>${playerName || '플레이어'}</strong>님!</p>
                         </div>
                         <p class="text-lg text-gray-700 mb-6"><strong>${moves}번</strong> 만에 모든 카드를 맞췄습니다!</p>
+                        ${
+                            adminCleared
+                            ? `<div class="mb-4 p-3 rounded bg-yellow-100 text-yellow-900 font-bold">
+                                    어드민 권한으로 즉시 클리어되었습니다!
+                                </div>`
+                            : ''
+                        }
                         <div class="flex gap-3 justify-center">
                             <button onclick="startGame()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
                                 다시하기
@@ -813,7 +825,7 @@
                     </div>
                     
                     <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
-                        <svg data-lucide="game-controller" class="w-5 h-5"></svg>
+                        
                         게임으로
                     </button>
                 </div>
