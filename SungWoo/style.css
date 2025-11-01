@@ -170,10 +170,42 @@ main {
     .hambugerNav {
         width: 10%;
         height: 100%;
-        display: flex !important;
+        display: flex;
         justify-content: center;
         align-items: center;
+    }
+    .hambugerNav > i {
         font-size: 20px;
+    }
+    .hambugerGnbContainer {
+        width: 60%;
+        height: 100%;
+        background: #fff;
+        position: fixed;
+        top: 0;
+        right: 0;
+        display: none;
+        z-index: 1000;
+    }
+    .closeBtn {
+        width: 100%;
+        height: 50px;
+        display: flex;
+        justify-content: end;
+        align-items: center;
+        padding-right: 45px;
+    }
+    .closeBtn > i {
+        font-size: 20px;
+    }
+    .hambugerGnb {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: start;
+        padding-top: 20px;
+        padding-left: 20px;
+        gap: 30px;
     }
     .visual {
         height: 300px;
