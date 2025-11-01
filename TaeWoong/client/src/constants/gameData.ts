@@ -7,7 +7,7 @@ export const ITEMS: GameItem[] = [
     title: '한복',
     icon: '👘',
     desc: '한국의 전통 의상으로 특별한 날에 입습니다.',
-    img: 'hanbok.jpg',
+    img: '김장.jpg',
     color: 'bg-pink-600'
   },
   {
@@ -15,7 +15,7 @@ export const ITEMS: GameItem[] = [
     title: '김치',
     icon: '🌶️',
     desc: '한국의 대표적인 발효 음식입니다.',
-    img: 'kimchi.jpg',
+    img: '석굼암.jpg',
     color: 'bg-red-600'
   },
   {
@@ -23,7 +23,7 @@ export const ITEMS: GameItem[] = [
     title: '비빔밥',
     icon: '🍚',
     desc: '밥 위에 나물을 얹어 비벼 먹는 음식입니다.',
-    img: 'bibimbap.jpg',
+    img: '수원화성.jpg',
     color: 'bg-orange-600'
   },
   {
@@ -31,7 +31,7 @@ export const ITEMS: GameItem[] = [
     title: '탈춤',
     icon: '🎭',
     desc: '탈을 쓰고 추는 전통 연희입니다.',
-    img: 'talchum.jpg',
+    img: '종묘.jpg',
     color: 'bg-purple-600'
   },
   {
@@ -39,7 +39,7 @@ export const ITEMS: GameItem[] = [
     title: '태극기',
     icon: '🇰🇷',
     desc: '대한민국의 국기입니다.',
-    img: 'taegeukgi.jpg',
+    img: '창덕궁.jpg',
     color: 'bg-blue-700'
   },
   {
@@ -47,7 +47,7 @@ export const ITEMS: GameItem[] = [
     title: '궁궐',
     icon: '🏯',
     desc: '조선 시대 왕이 살던 큰 건축물입니다.',
-    img: 'palace.jpg',
+    img: '탈춤.jpg',
     color: 'bg-amber-700'
   },
   {
@@ -55,7 +55,7 @@ export const ITEMS: GameItem[] = [
     title: '붓글씨',
     icon: '🖋️',
     desc: '붓으로 쓰는 서예입니다.',
-    img: 'calligraphy.jpg',
+    img: '팔소리.jpg',
     color: 'bg-gray-700'
   },
   {
@@ -63,21 +63,31 @@ export const ITEMS: GameItem[] = [
     title: '가야금',
     icon: '🎶',
     desc: '한국의 전통 현악기입니다.',
-    img: 'gayageum.jpg',
+    img: '윤민정음.jpg',
     color: 'bg-green-600'
   }
 ];
 
-// 스테이지 데이터 (현재는 한 개 스테이지)
+// 스테이지 데이터 (3개 스테이지)
 export const STAGES: Stage[] = [
   {
     id: 1,
-    name: '한국 문화',
+    name: '한국 문화재',
+    folder: 'culture',
+    items: ITEMS
+  },
+  {
+    id: 2,
+    name: '한국 음식',
+    folder: 'food',
+    items: ITEMS
+  },
+  {
+    id: 3,
+    name: '한국 영화',
+    folder: 'movie',
     items: ITEMS
   }
-  // 추후 추가 스테이지
-  // { id: 2, name: '한국 음식', items: [...] },
-  // { id: 3, name: '한국 영화', items: [...] }
 ];
 
 // 프로필 아바타 상점

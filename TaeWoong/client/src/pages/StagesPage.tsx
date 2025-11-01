@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
 import { STAGES } from '../constants/gameData';
+import { GameItem } from '../types';
 
 const StagesPage: React.FC = () => {
   const navigate = useNavigate();
   const { playerName, playerAvatar, isGuest, logout } = useAuth();
   const { currentStage, unlockedStages, completedStages, coins, initializeGame } = useGame();
+  const [selectedItem, setSelectedItem] = useState<(GameItem & { stageName: string; folder: string }) | null>(null);
 
   const handleGameStart = (stageId: number) => {
     initializeGame(stageId);
@@ -109,19 +111,16 @@ const StagesPage: React.FC = () => {
 
                   <div className="grid grid-cols-4 gap-2 mb-6">
                     {stage.items.slice(0, 8).map((item) => (
-                      <div key={item.idx} className="aspect-square bg-white/20 rounded-lg overflow-hidden">
-                        <img
-                          src={`../assets/img/${item.img}`}
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="60" text-anchor="middle" dy=".3em"%3E' +
-                              item.icon +
-                              '%3C/text%3E%3C/svg%3E';
-                          }}
-                        />
-                      </div>
+                  <div key={item.idx} className="aspect-square bg-white/20 rounded-lg overflow-hidden">
+                    <img
+                      src={`../../assets/img/${stage.folder}/${item.img}`}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).classList.add('hidden');
+                      }}
+                    />
+                  </div>
                     ))}
                   </div>
 

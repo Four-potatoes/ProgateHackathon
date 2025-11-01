@@ -2,23 +2,42 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/GameContext';
 import { STAGES } from '../constants/gameData';
-import { GameItem } from '../types';
+
+interface CollectionItemWithMeta {
+  idx: number;
+  title: string;
+  icon: string;
+  desc: string;
+  img: string;
+  color: string;
+  stageName: string;
+  stageId: number;
+  folder: string;
+  isUnlocked: boolean;
+}
 
 const CollectionPage: React.FC = () => {
   const navigate = useNavigate();
   const { completedStages } = useGame();
-  const [selectedItem, setSelectedItem] = useState<(GameItem & { stageName: string }) | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CollectionItemWithMeta | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const allItems = STAGES.flatMap((stage) =>
+  const allItems: CollectionItemWithMeta[] = STAGES.flatMap((stage) =>
     stage.items.map((item) => ({
-      ...item,
+      idx: item.idx,
+      title: item.title,
+      icon: item.icon,
+      desc: item.desc,
+      img: item.img,
+      color: item.color,
       stageName: stage.name,
+      stageId: stage.id,
+      folder: stage.folder,
       isUnlocked: completedStages.includes(stage.id)
     }))
   );
 
-  const handleSelectItem = (item: GameItem & { stageName: string; isUnlocked: boolean }) => {
+  const handleSelectItem = (item: CollectionItemWithMeta) => {
     if (item.isUnlocked) {
       setSelectedItem(item);
       setIsFlipped(false);
@@ -57,7 +76,7 @@ const CollectionPage: React.FC = () => {
             const isLocked = !item.isUnlocked;
             return (
               <div
-                key={`${item.stageName}-${item.idx}`}
+                key={`${item.stageId}-${item.idx}`}
                 onClick={() => handleSelectItem(item)}
                 className={`
                   bg-white/10 backdrop-blur-md rounded-xl shadow-lg overflow-hidden
@@ -65,16 +84,13 @@ const CollectionPage: React.FC = () => {
                   ${isLocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:scale-105 hover:shadow-2xl'}
                 `}
               >
-                <div className="aspect-square overflow-hidden">
+                <div className="aspect-square overflow-hidden flex items-center justify-center bg-gray-100">
                   <img
-                    src={`../assets/img/${item.img}`}
+                    src={`../../assets/img/${item.folder}/${item.img}`}
                     alt={item.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23374151" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="60" text-anchor="middle" dy=".35em"%3E' +
-                        item.icon +
-                        '%3C/text%3E%3C/svg%3E';
+                      (e.target as HTMLImageElement).classList.add('hidden');
                     }}
                   />
                 </div>
@@ -123,14 +139,11 @@ const CollectionPage: React.FC = () => {
                 }}
               >
                 <img
-                  src={`../assets/img/${selectedItem.img}`}
+                  src={`../../assets/img/${selectedItem.folder}/${selectedItem.img}`}
                   alt={selectedItem.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%231f2937" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="80" text-anchor="middle" dy=".35em"%3E' +
-                      selectedItem.icon +
-                      '%3C/text%3E%3C/svg%3E';
+                    (e.target as HTMLImageElement).classList.add('hidden');
                   }}
                 />
               </div>

@@ -42,6 +42,7 @@ export interface GameCard extends GameItem {
 export interface Stage {
   id: number;
   name: string;
+  folder: string;
   items: GameItem[];
 }
 

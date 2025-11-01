@@ -235,7 +235,7 @@ const GamePage: React.FC = () => {
 
                   {/* 카드 앞면 */}
                   <div
-                    className="absolute w-full h-full bg-white rounded-xl shadow-lg overflow-hidden border-4 border-purple-200 flex items-center justify-center"
+                    className="absolute w-full h-full bg-white rounded-xl shadow-lg overflow-hidden border-4 border-purple-200"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
@@ -243,15 +243,11 @@ const GamePage: React.FC = () => {
                     }}
                   >
                     <img
-                      src={`../assets/img/${card.img}`}
+                      src={`../../assets/img/${stage?.folder}/${card.img}`}
                       alt={card.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src =
-                          'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="60" text-anchor="middle" dy=".35em"%3E' +
-                          card.icon +
-                          '%3C/text%3E%3C/svg%3E';
+                        (e.target as HTMLImageElement).classList.add('hidden');
                       }}
                     />
                   </div>
