@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>한국문화 카드 학습 데모</title>
+<style>
+  body { font-family: 'Pretendard', sans-serif; text-align: center; padding: 40px; background: #fafafa; }
+  h2 { margin-bottom: 30px; }
+  #cards { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; }
+  .card {
+    width: 150px; height: 180px; display: flex; justify-content: center; align-items: center;
+    background: white; border-radius: 12px; box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    cursor: pointer; font-size: 18px; font-weight: 600; transition: 0.25s;
+  }
+  .card:hover { transform: translateY(-5px); background: #f0f9ff; }
+  #output { margin-top: 40px; font-size: 17px; line-height: 1.6; min-height: 100px;
+           width: 80%; margin: auto; background: #fff; border-radius: 12px;
+           box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 20px; }
+  #loading { display: none; color: #666; font-style: italic; margin-top: 20px; }
+  #error { display: none; color: red; margin-top: 10px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h2>🇰🇷 한국문화 카드 학습 데모</h2>
+
+<div id="cards">
+  <div class="card" data-topic="한복">한복</div>
+  <div class="card" data-topic="태권도 도복">태권도 도복</div>
+  <div class="card" data-topic="김치">김치</div>
+  <div class="card" data-topic="비빔밥">비빔밥</div>
+</div>
+
+<div id="loading">AI가 생각 중입니다...</div>
+<div id="output">카드를 클릭하면 설명이 표시됩니다.</div>
+<div id="error"></div>
+
+<script>
+const output = document.getElementById('output');
+const loading = document.getElementById('loading');
+const errorBox = document.getElementById('error');
+const cache = {};
+
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', async () => {
+    const topic = card.dataset.topic;
+    errorBox.style.display = 'none';
+
+    if (cache[topic]) {
+      output.innerText = cache[topic];
+      return;
+    }
+
+    try {
+      loading.style.display = 'block';
+      output.innerText = '';
+
+      const res = await fetch('http://localhost:3000/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.text) {
+        cache[topic] = data.text;
+        output.innerText = cache[topic];
+      } else {
+        throw new Error(data.error || '설명 생성 실패');
+      }
+    } catch (err) {
+      errorBox.style.display = 'block';
+      errorBox.innerText = '설명 생성 중 오류가 발생했습니다.';
+      console.error(err);
+    } finally {
+      loading.style.display = 'none';
+    }
+  });
+});
+</script>
+
+</body>
+</html>
