@@ -1,6 +1,7 @@
 const hambugerNav = document.getElementById('hambugerNav');
 const hambugerGnbContainer = document.querySelector('.hambugerGnbContainer');
-const closeBtn = document.getElementById('closeBtn');
+const closeBtnCon = document.getElementById('closeBtn');
+const closeBtn = closeBtnCon.querySelector('i');
 
 hambugerNav.addEventListener('click', () => {
   const isOpen = hambugerGnbContainer.style.display === "block";
@@ -11,3 +12,4 @@ closeBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   hambugerGnbContainer.style.display = "none";
 });
+

@@ -93,19 +93,43 @@ header {
 .logo {
     width: 250px;
     height: 100%;
+} 
+.moblieLogo {
+    display: none;
 }
 .gnbContainer {
     width: 20%;
     height: 100%;
     font-weight: 600;
-    font-size: 20px;
+    font-size: 22px;
 }
-.gnb {
+.gnbInner {
     width: 100%;
     height: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+.gnb {
+    position: relative;
+    height: 100%;
+    align-content: center;
+    cursor: pointer;
+}
+.gnb::before {
+    width: 100%;
+    height: 0px;
+    background: #111;
+    border-radius: 5px;
+    content: '';
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    transition: .3s;
+}
+.gnb:hover::before {
+    height: 3px;
+    transition: .3s;
 }
 .util {
     width: 10%;
@@ -114,33 +138,78 @@ header {
     justify-content: space-between;
     align-items: center;
     font-weight: 300;
+    font-size: 18px;
 }
 .hambugerNav {
     display: none;
 }
-main {
-    height: 100vh;
-}
 .visual {
     width: 100%;
-    height: 600px;
-    background: red;
+    height: 800px;
     display: flex;
     justify-content: center;
     position: relative;
+    background: #ffffff;
+    background: linear-gradient(0deg,rgba(255, 255, 255, 1) 0%, rgba(124, 158, 79, 1) 100%);
+    background: #ffffff;
+    background: linear-gradient(180deg,rgba(255, 255, 255, 1) 0%, rgba(169, 200, 212, 1) 35%, rgba(0, 92, 117, 1) 100%);
 }
 .visual > img {
-    width: 100%;
+    width: 200px;
+    height: 200px;
+    position: absolute;
+    top: 43%;
+    right: 20%;
 }
-.visual > h1 {
-    width: 100%;
+.visual > img:nth-child(2) {
+    right: 9%;
+    top: 28%;
+    transform: rotate(80deg);
+}
+.visual > img:nth-child(3) {
+    right: 20%;
+    top: 70%;
+    transform: rotate(325deg);
+}
+.visual >img:nth-child(4) {
+    right: 10%;
+    top: 60%;
+    transform: rotate(165deg);
+}
+.visual > img:nth-child(5) {
+    right: 21%;
+    top: 16%;
+    transform: rotate(145deg);
+}
+.visual > div {
+    width: var(--containerSize);
     height: 100%;
     position: absolute;
     align-content: center;
-    text-align: center;
+    text-align: start;
     align-content: center;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+}
+.line {
+    width: 30%;
+    height: 2px;
+    background: #fff;
+}
+.visual > div > h1 {
     font-size: 60px;
-    background: rgba(255, 255, 255, 0.5);
+}
+.visual > div > h1:nth-child(1) {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    
+}
+.partIntroContainer {
+
 }
 @media (max-width: 480px) {
     :root {
@@ -154,8 +223,15 @@ main {
         width: var(--containerSize);
     }
     .logo {
+        display: none;
+    }
+    .moblieLogo {
         width: 150px;
         height: 100%;
+        display: block;
+    }
+    .moblieLogo > img {
+        width: 100%;
     }
     .gnbContainer {
         display: none;
@@ -193,7 +269,7 @@ main {
         display: flex;
         justify-content: end;
         align-items: center;
-        padding-right: 45px;
+        padding-right: 50px;
     }
     .closeBtn > i {
         font-size: 20px;
@@ -216,5 +292,6 @@ main {
     .visual > h1 {
         font-size: 30px;
         padding: 50px;
+        text-align: center;
     }
 }
