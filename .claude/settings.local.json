@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"TaeWoong/src/index.html\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
