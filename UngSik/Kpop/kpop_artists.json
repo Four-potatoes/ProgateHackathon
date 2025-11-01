@@ -1,0 +1,92 @@
+{
+    "kpop_artists": [
+        {
+            "idx": 1,
+            "name": "BTS",
+            "img": "bts.jpg",
+            "genre": "보이밴드",
+            "members": "RM, 진, 슈가, J-Hope, 지민, 뷔, 정국",
+            "icon": "🎤",
+            "debut_year": "2013",
+            "agency": "하이브",
+            "desc": "한국 음악을 세계적으로 알린 7명의 멤버로 이루어진 그룹으로 그래미상 후보 경험."
+        },
+        {
+            "idx": 2,
+            "name": "BLACKPINK",
+            "img": "blackpink.jpg",
+            "genre": "걸그룹",
+            "members": "지수, 제니, 로제, 리사",
+            "icon": "✨",
+            "debut_year": "2016",
+            "agency": "YG엔터테인먼트",
+            "desc": "유튜브 뮤직비디오 최다 조회수 기록을 보유한 전 세계적 인기 걸그룹."
+        },
+        {
+            "idx": 3,
+            "name": "TWICE",
+            "img": "twice.jpg",
+            "genre": "걸그룹",
+            "members": "나연, 정연, 모모, 사나, 지효, 다현, 미나, 채영, 츠우",
+            "icon": "💕",
+            "debut_year": "2015",
+            "agency": "JYP엔터테인먼트",
+            "desc": "한국, 미국, 일본에서 모두 성공한 9명의 멤버로 이루어진 걸그룹."
+        },
+        {
+            "idx": 4,
+            "name": "EXO",
+            "img": "exo.jpg",
+            "genre": "보이밴드",
+            "members": "수호, 카이, 세흔, 찬열, 백현, 디오, 시우민",
+            "icon": "🌟",
+            "debut_year": "2012",
+            "agency": "SM엔터테인먼트",
+            "desc": "K-pop 3세대를 대표하는 그룹으로 아시아를 중심으로 큰 인기를 얻었다."
+        },
+        {
+            "idx": 5,
+            "name": "동방신기",
+            "img": "동방신기.jpg",
+            "genre": "보이밴드",
+            "members": "유노, 창민, 민호, 준수, 시아",
+            "icon": "🌙",
+            "debut_year": "2003",
+            "agency": "SM엔터테인먼트",
+            "desc": "K-pop 역사상 가장 오래되고 영향력 있는 그룹으로 아시아 전역에서 큰 인기를 얻었다."
+        },
+        {
+            "idx": 6,
+            "name": "NewJeans",
+            "img": "newjeans.jpg",
+            "genre": "걸그룹",
+            "members": "하이에, 혜인, 다니엘, 헤린, 진",
+            "icon": "🎀",
+            "debut_year": "2022",
+            "agency": "어도어",
+            "desc": "최신 세대를 대표하는 신예 걸그룹으로 빠르게 전 세계 팬층을 확보했다."
+        },
+        {
+            "idx": 7,
+            "name": "Stray Kids",
+            "img": "straykids.jpg",
+            "genre": "보이밴드",
+            "members": "방찬, 김준, 창빈, 현진, 한, 필릭스, 승민, IN, 아이엔",
+            "icon": "🎬",
+            "debut_year": "2018",
+            "agency": "JYP엔터테인먼트",
+            "desc": "자신들의 음악을 직접 제작하는 음악성 강한 9명의 아이돌 그룹."
+        },
+        {
+            "idx": 8,
+            "name": "IVE",
+            "img": "ive.jpg",
+            "genre": "걸그룹",
+            "members": "가을, 원영, 레이, 유진, 이서, 리세",
+            "icon": "💫",
+            "debut_year": "2021",
+            "agency": "스타이브",
+            "desc": "차세대 걸그룹으로 신선한 개성과 뛰어난 무대 실력을 갖춘 그룹."
+        }
+    ]
+}
