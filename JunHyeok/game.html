@@ -89,7 +89,17 @@
         let processing = false;
         let selectedCard = null; // 도감에서 선택된 카드
         let solvedQuizzes = new Set(); // 풀린 퀴즈들 (형식: "카드이름-fill" or "카드이름-write")
-        let dummyCreated = false; // 더미 데이터 생성 여부
+        
+        // 더미 랭킹 데이터 (메모리에 저장)
+        let rankingData = [
+            { uid: 'dummy_1', name: '김민수', moves: 18, time: new Date('2024-01-01') },
+            { uid: 'dummy_2', name: '이서연', moves: 22, time: new Date('2024-01-02') },
+            { uid: 'dummy_3', name: '박지훈', moves: 25, time: new Date('2024-01-03') },
+            { uid: 'dummy_4', name: '최유진', moves: 28, time: new Date('2024-01-04') },
+            { uid: 'dummy_5', name: '정하늘', moves: 31, time: new Date('2024-01-05') },
+            { uid: 'dummy_6', name: '강민지', moves: 35, time: new Date('2024-01-06') },
+            { uid: 'dummy_7', name: '윤태양', moves: 38, time: new Date('2024-01-07') },
+        ];
         
         const root = document.getElementById('app');
 
@@ -173,6 +183,15 @@
         // Firebase 데이터베이스
         // ============================================
         const saveScore = async (score) => {
+            // 메모리 랭킹에 추가
+            rankingData.push({
+                uid: userId,
+                name: playerName || '익명',
+                moves: score,
+                time: new Date(),
+            });
+            
+            // Firebase가 있으면 저장
             if (!db || !userId) return;
             
             const path = `artifacts/${config.appId}/public/data/ranking`;
@@ -189,7 +208,14 @@
         };
 
         const watchRanking = () => {
-            if (!db) return;
+            // Firebase가 없으면 메모리 데이터만 사용
+            if (!db) {
+                if (page === 'ranking') {
+                    renderRanking(rankingData, false);
+                }
+                return;
+            }
+            
             const path = `artifacts/${config.appId}/public/data/ranking`;
             const q = query(
                 collection(db, path),
@@ -199,14 +225,17 @@
             );
 
             onSnapshot(q, (snapshot) => {
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const firebaseData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Firebase 데이터와 메모리 데이터 병합
+                const combined = [...rankingData, ...firebaseData];
                 if (page === 'ranking') {
-                    renderRanking(data, false);
+                    renderRanking(combined, false);
                 }
             }, (err) => {
                 console.error("Ranking error:", err);
+                // 에러 시 메모리 데이터만 표시
                 if (page === 'ranking') {
-                    renderRanking([], false);
+                    renderRanking(rankingData, false);
                 }
             });
         };
