@@ -12,14 +12,12 @@
         .backface-hidden { backface-visibility: hidden; }
         .flip { transform: rotateY(180deg); }
         .card-transition { transition: transform 0.5s; }
-        
         /* 승리 모달 애니메이션 */
         @keyframes pop {
             0% { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
         .pop-in { animation: pop 0.3s ease-out forwards; }
-        
         /* 프로필 선택 애니메이션 */
         .profile-selected {
             transform: scale(1.1);
@@ -32,7 +30,6 @@
     </script>
 </head>
 <body class="min-h-screen font-sans bg-gray-50">
-
     <div id="app" class="min-h-screen">
         <!-- 로딩 화면 -->
         <div class="flex flex-col justify-center items-center h-screen bg-pink-50">
@@ -40,13 +37,17 @@
             <p class="ml-4 text-xl text-gray-700 mt-4">로딩 중...</p>
         </div>
     </div>
-    
     <script type="module">
         // ============================================
         // Firebase 임포트
         // ============================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getAuth,
+            GoogleAuthProvider,
+            signInWithPopup,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ============================================
@@ -58,7 +59,6 @@
             appId: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'
         };
 
-        // K-Culture 카드 데이터 (8쌍 = 16장)
         const ITEMS = [
             { name: '한복', icon: '👘', desc: '한국의 전통 의상.' },
             { name: '김치', icon: '🌶️', desc: '한국의 대표적인 발효 음식.' },
@@ -69,12 +69,16 @@
             { name: '붓글씨', icon: '🖋️', desc: '붓으로 쓰는 서예.' },
             { name: '가야금', icon: '🎶', desc: '한국의 전통 현악기.' },
         ];
-        
-        // 프로필 아바타 옵션
-        const PROFILE_AVATARS = [
+
+        const FREE_AVATARS = [
             '😊', '😎', '🤗', '😄', '🥰', '😇', '🤓', '😋',
             '🐱', '🐶', '🐰', '🐻', '🦊', '🐼', '🐨', '🐸',
             '🌟', '⭐', '🎈', '🎯', '🎨', '🎭', '🎪', '🎵'
+        ];
+
+        const PREMIUM_AVATARS = [
+            '👑', '🦄', '🐉', '🧙‍♂️', '🦸‍♀️', '🤖', '👾', '🪐',
+            '💎', '🏆', '🚀', '🎭', '🎻', '🎨', '🎩', '🕶️'
         ];
 
         // ============================================
@@ -83,7 +87,7 @@
         let app, db, auth;
         let userId = null;
         let isReady = false;
-        
+
         // 게임 상태
         let cards = [];
         let flipped = [];
@@ -91,33 +95,27 @@
         let moves = 0;
         let won = false;
         let clickable = true;
-        let unlockedCards = new Set(); // 잠금 해제된 카드 이름들
-        let playerName = ''; // 플레이어 이름
-        let playerAvatar = '😊'; // 플레이어 프로필 아바타
-        let gameStarted = false; // 게임 시작 여부
-        
-        // 어드민 클리어 표시용 상태 추가
+        let unlockedCards = new Set();
+        let playerName = '';
+        let playerAvatar = '😊';
+        let gameStarted = false;
         let adminCleared = false;
-
-        // UI 상태
-        let page = 'game';
+        let page = 'main'; // main, game, cards, ai, ranking, profile, selectNickname, selectAvatar
         let quiz = null;
         let feedback = null;
         let processing = false;
-        let selectedCard = null; // 도감에서 선택된 카드
-        let solvedQuizzes = new Set(); // 풀린 퀴즈들 (형식: "카드이름-fill" or "카드이름-write")
-        
-        // 더미 랭킹 데이터 (메모리에 저장)
+        let selectedCard = null;
+        let solvedQuizzes = new Set();
+        let points = 0;
+        let ownedAvatars = new Set(FREE_AVATARS);
+
+        // 더미 랭킹
         let rankingData = [
             { uid: 'dummy_1', name: '김민수', avatar: '😎', moves: 18, time: new Date('2024-01-01') },
             { uid: 'dummy_2', name: '이서연', avatar: '🥰', moves: 22, time: new Date('2024-01-02') },
             { uid: 'dummy_3', name: '박지훈', avatar: '🤓', moves: 25, time: new Date('2024-01-03') },
-            { uid: 'dummy_4', name: '최유진', avatar: '🐱', moves: 28, time: new Date('2024-01-04') },
-            { uid: 'dummy_5', name: '정하늘', avatar: '🌟', moves: 31, time: new Date('2024-01-05') },
-            { uid: 'dummy_6', name: '강민지', avatar: '🐰', moves: 35, time: new Date('2024-01-06') },
-            { uid: 'dummy_7', name: '윤태양', avatar: '🎨', moves: 38, time: new Date('2024-01-07') },
         ];
-        
+
         const root = document.getElementById('app');
 
         // ============================================
@@ -141,66 +139,151 @@
         };
 
         // ============================================
-        // 어드민 기능 (게임 클리어)
+        // Firebase & Auth
+        // ============================================
+        const loginWithGoogle = async () => {
+            if (!auth) return alert("인증 시스템이 준비되지 않았습니다.");
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                userId = user.uid;
+                localStorage.setItem(`points_${userId}`, '0');
+                localStorage.setItem(`ownedAvatars_${userId}`, JSON.stringify([...FREE_AVATARS]));
+                navigate('selectNickname');
+            } catch (err) {
+                console.error("Google login error:", err);
+                alert("구글 로그인에 실패했습니다.");
+            }
+        };
+
+        const loginAsGuest = () => {
+            userId = crypto.randomUUID();
+            localStorage.setItem(`points_${userId}`, '0');
+            localStorage.setItem(`ownedAvatars_${userId}`, JSON.stringify([...FREE_AVATARS]));
+            navigate('selectNickname');
+        };
+
+        const setNickname = () => {
+            const input = document.getElementById('nickname-input');
+            const name = input.value.trim();
+            if (!name) {
+                alert('닉네임을 입력해주세요.');
+                return;
+            }
+            if (name.length > 10) {
+                alert('닉네임은 10자 이내로 입력해주세요.');
+                return;
+            }
+            playerName = name;
+            localStorage.setItem(`playerName_${userId}`, playerName);
+            navigate('selectAvatar');
+        };
+
+        // ============================================
+        // 어드민 기능
         // ============================================
         const showAdminLogin = () => {
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
             modal.innerHTML = `
                 <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">🔐 어드민 로그인</h2>
-                    <input type="password" id="admin-password" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4" placeholder="비밀번호 입력" maxlength="4" />
-                    <div class="flex gap-3 justify-center">
-                        <button onclick="checkAdminPassword()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">로그인</button>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">🔐 어드민 메뉴</h2>
+                    <input type="password" id="admin-password" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 mb-4" placeholder="비밀번호 입력 (0000)" maxlength="4" />
+                    <div class="flex flex-col gap-3">
+                        <button onclick="verifyAdminPassword()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
                         <button onclick="closeAdminLogin()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
             document.getElementById('admin-password').focus();
-            
-            // Enter 키로 로그인
             document.getElementById('admin-password').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    checkAdminPassword();
+                    verifyAdminPassword();
                 }
             });
         };
-        
-        const checkAdminPassword = () => {
-            const password = document.getElementById('admin-password').value;
-            if (password === '0000') {
-                closeAdminLogin();
-                adminClearGame();
+
+        const verifyAdminPassword = () => {
+            const pwd = document.getElementById('admin-password').value;
+            closeAdminLogin();
+            
+            if (pwd === '0000') {
+                showAdminSuccess();
             } else {
-                alert('비밀번호가 틀렸습니다.');
-                document.getElementById('admin-password').value = '';
-                document.getElementById('admin-password').focus();
+                showAdminFailure();
             }
         };
-        
+
+        const showAdminSuccess = () => {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                    <div class="text-6xl mb-4">✅</div>
+                    <h2 class="text-2xl font-bold text-green-600 mb-2">인증 성공!</h2>
+                    <p class="text-gray-600 mb-6">어드민 권한이 확인되었습니다.</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="adminClearGame(); closeAdminMenus();" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                            🎮 게임 즉시 클리어
+                        </button>
+                        <button onclick="giveAdminPoints(); closeAdminMenus();" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                            💰 포인트 100 지급
+                        </button>
+                        <button onclick="closeAdminMenus()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">취소</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
+        const showAdminFailure = () => {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                    <div class="text-6xl mb-4">❌</div>
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">인증 실패</h2>
+                    <p class="text-gray-600 mb-6">비밀번호가 올바르지 않습니다.</p>
+                    <button onclick="closeAdminMenus()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
+        const giveAdminPoints = () => {
+            points += 100;
+            localStorage.setItem(`points_${userId}`, points.toString());
+            const successModal = document.createElement('div');
+            successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            successModal.innerHTML = `
+                <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in max-w-sm w-full mx-4">
+                    <div class="text-6xl mb-4">💰</div>
+                    <h2 class="text-2xl font-bold text-yellow-600 mb-2">포인트 지급 완료!</h2>
+                    <p class="text-gray-600 mb-6">100 포인트가 지급되었습니다.</p>
+                    <button onclick="closeAdminMenus()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">확인</button>
+                </div>
+            `;
+            document.body.appendChild(successModal);
+            if (page === 'profile') setTimeout(() => renderProfile(), 1500);
+        };
+
+        const closeAdminMenus = () => {
+            const modals = document.querySelectorAll('.fixed.inset-0.bg-black');
+            modals.forEach(modal => modal.remove());
+        };
+
         const closeAdminLogin = () => {
-            const modal = document.querySelector('.fixed.inset-0.bg-black');
-            if (modal) {
-                modal.remove();
-            }
+            closeAdminMenus();
         };
-        
+
         const adminClearGame = () => {
-            // 게임 즉시 클리어
             matched = [...cards.map(c => c.id)];
             won = true;
-            
-            // 모든 카드 잠금 해제
-            ITEMS.forEach(item => {
-                unlockedCards.add(item.name);
-            });
-            
-            // 최고 점수로 저장
+            ITEMS.forEach(item => unlockedCards.add(item.name));
             saveScore(1);
-
-            adminCleared = true; // 어드민 클리어 상태
-
+            adminCleared = true;
             renderGame();
         };
 
@@ -215,38 +298,24 @@
             moves = 0;
             won = false;
             clickable = true;
-            adminCleared = false; // 게임 재시작시 어드민 플래그 초기화
+            adminCleared = false;
             renderGame();
-        };
-
-        const checkWin = () => {
-            if (matched.length === cards.length) {
-                won = true;
-                saveScore(moves);
-                renderGame();
-            }
         };
 
         const clickCard = (id) => {
-            if (!clickable || flipped.length === 2 || flipped.includes(id) || matched.includes(id) || won) {
-                return;
-            }
-
+            if (!clickable || flipped.length === 2 || flipped.includes(id) || matched.includes(id) || won) return;
             flipped.push(id);
             renderGame();
-            
             if (flipped.length === 2) {
                 clickable = false;
                 moves++;
                 renderGame();
-
                 const [first, second] = flipped;
                 const card1 = cards.find(c => c.id === first);
                 const card2 = cards.find(c => c.id === second);
-
                 if (card1.name === card2.name) {
                     matched.push(first, second);
-                    unlockedCards.add(card1.name); // 카드 잠금 해제
+                    unlockedCards.add(card1.name);
                     flipped = [];
                     clickable = true;
                     checkWin();
@@ -261,11 +330,18 @@
             }
         };
 
+        const checkWin = () => {
+            if (matched.length === cards.length) {
+                won = true;
+                saveScore(moves);
+                renderGame();
+            }
+        };
+
         // ============================================
-        // Firebase 데이터베이스
+        // Firebase & 점수 저장
         // ============================================
         const saveScore = async (score) => {
-            // 메모리 랭킹에 추가
             rankingData.push({
                 uid: userId,
                 name: playerName || '익명',
@@ -273,10 +349,7 @@
                 moves: score,
                 time: new Date(),
             });
-            
-            // Firebase가 있으면 저장
             if (!db || !userId) return;
-            
             const path = `artifacts/${config.appId}/public/data/ranking`;
             try {
                 await addDoc(collection(db, path), {
@@ -292,35 +365,19 @@
         };
 
         const watchRanking = () => {
-            // Firebase가 없으면 메모리 데이터만 사용
             if (!db) {
-                if (page === 'ranking') {
-                    renderRanking(rankingData, false);
-                }
+                if (page === 'ranking') renderRanking(rankingData, false);
                 return;
             }
-            
             const path = `artifacts/${config.appId}/public/data/ranking`;
-            const q = query(
-                collection(db, path),
-                orderBy("moves", "asc"),
-                orderBy("time", "asc"),
-                limit(20)
-            );
-
+            const q = query(collection(db, path), orderBy("moves", "asc"), orderBy("time", "asc"), limit(20));
             onSnapshot(q, (snapshot) => {
                 const firebaseData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Firebase 데이터와 메모리 데이터 병합
                 const combined = [...rankingData, ...firebaseData];
-                if (page === 'ranking') {
-                    renderRanking(combined, false);
-                }
+                if (page === 'ranking') renderRanking(combined, false);
             }, (err) => {
                 console.error("Ranking error:", err);
-                // 에러 시 메모리 데이터만 표시
-                if (page === 'ranking') {
-                    renderRanking(rankingData, false);
-                }
+                if (page === 'ranking') renderRanking(rankingData, false);
             });
         };
 
@@ -330,16 +387,10 @@
         const getUnsolvedQuizzes = () => {
             const unlockedItems = ITEMS.filter(item => unlockedCards.has(item.name));
             const unsolved = [];
-            
             unlockedItems.forEach(item => {
-                if (!solvedQuizzes.has(`${item.name}-fill`)) {
-                    unsolved.push({ item, type: 'fill' });
-                }
-                if (!solvedQuizzes.has(`${item.name}-write`)) {
-                    unsolved.push({ item, type: 'write' });
-                }
+                if (!solvedQuizzes.has(`${item.name}-fill`)) unsolved.push({ item, type: 'fill' });
+                if (!solvedQuizzes.has(`${item.name}-write`)) unsolved.push({ item, type: 'write' });
             });
-            
             return unsolved;
         };
 
@@ -347,34 +398,25 @@
             processing = true;
             feedback = null;
             renderAI();
-
             setTimeout(() => {
                 const unsolvedQuizzes = getUnsolvedQuizzes();
-                
-                // 모든 퀴즈를 다 풀었는지 확인
                 if (unsolvedQuizzes.length === 0) {
                     processing = false;
                     quiz = null;
                     renderAI();
                     return;
                 }
-                
-                // 특정 카드가 지정되었으면 그 카드의 안 푼 문제를 찾음
                 let selectedQuiz;
                 if (specificItem) {
                     const itemQuizzes = unsolvedQuizzes.filter(q => q.item.name === specificItem.name);
-                    selectedQuiz = itemQuizzes.length > 0 
+                    selectedQuiz = itemQuizzes.length > 0
                         ? itemQuizzes[Math.floor(Math.random() * itemQuizzes.length)]
                         : unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
                 } else {
-                    // 랜덤으로 안 푼 문제 선택
                     selectedQuiz = unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
                 }
-                
                 const { item, type } = selectedQuiz;
-                
                 if (type === 'fill') {
-                    // 빈칸 채우기
                     const blankedDesc = item.desc.replace(item.name, '___');
                     quiz = {
                         type: 'fill',
@@ -384,7 +426,6 @@
                         quizId: `${item.name}-fill`
                     };
                 } else {
-                    // 정보 쓰기
                     quiz = {
                         type: 'write',
                         question: `'${item.name}'${item.icon}에 대해 설명해주세요.`,
@@ -394,7 +435,6 @@
                         quizId: `${item.name}-write`
                     };
                 }
-                
                 processing = false;
                 const input = document.getElementById('answer');
                 if (input) input.value = '';
@@ -406,47 +446,65 @@
             const input = document.getElementById('answer');
             const userAnswer = input?.value.trim();
             if (!quiz || processing || !userAnswer) return;
-
             processing = true;
             renderAI();
-
             setTimeout(() => {
                 let isCorrect = false;
-                
                 if (quiz.type === 'fill') {
-                    // 빈칸 채우기: 정확한 답 확인
                     isCorrect = userAnswer.toLowerCase() === quiz.answer.toLowerCase();
-                    feedback = isCorrect 
+                    feedback = isCorrect
                         ? { type: 'correct', msg: `✅ 정답! ${quiz.item.icon} ${quiz.item.name}에 대해 완벽하게 알고 계시네요!` }
                         : { type: 'wrong', msg: `❌ 아쉽지만 틀렸어요. 정답은 '${quiz.answer}'입니다.\n${quiz.item.desc}` };
                 } else {
-                    // 정보 쓰기: 키워드 포함 여부 확인
                     isCorrect = userAnswer.length >= 5;
                     feedback = isCorrect
                         ? { type: 'correct', msg: `✅ 좋아요! ${quiz.item.icon} ${quiz.item.name}에 대해 잘 설명해주셨어요!\n참고: ${quiz.answer}` }
                         : { type: 'wrong', msg: `❌ 조금 더 자세히 설명해주세요! (최소 5글자 이상)\n힌트: ${quiz.answer}` };
                 }
-                
-                // 정답이면 퀴즈 완료로 표시
                 if (isCorrect) {
                     solvedQuizzes.add(quiz.quizId);
+                    points += 10;
+                    localStorage.setItem(`points_${userId}`, points.toString());
                 }
-                
                 processing = false;
                 renderAI();
             }, 1000);
         };
 
         // ============================================
-        // 렌더링 - 컴포넌트
+        // 프로필 관련 함수
+        // ============================================
+        const buyAvatar = (avatar, price) => {
+            if (points < price) {
+                alert('포인트가 부족합니다!');
+                return;
+            }
+            points -= price;
+            ownedAvatars.add(avatar);
+            localStorage.setItem(`points_${userId}`, points.toString());
+            localStorage.setItem(`ownedAvatars_${userId}`, JSON.stringify([...ownedAvatars]));
+            playerAvatar = avatar;
+            localStorage.setItem(`playerAvatar_${userId}`, playerAvatar);
+            renderProfile();
+        };
+
+        const selectAvatar = (avatar) => {
+            if (ownedAvatars.has(avatar)) {
+                playerAvatar = avatar;
+                localStorage.setItem(`playerAvatar_${userId}`, playerAvatar);
+                if (page === 'selectAvatar') {
+                    gameStarted = true;
+                    startGame();
+                } else {
+                    renderProfile();
+                }
+            }
+        };
+
+        // ============================================
+        // 렌더링
         // ============================================
         const renderMain = () => {
-            const profileGrid = PROFILE_AVATARS.map((avatar, index) => `
-                <button onclick="selectAvatar('${avatar}')" class="w-12 h-12 text-2xl rounded-full border-2 border-gray-300 hover:border-indigo-400 transition-all duration-200 ${playerAvatar === avatar ? 'profile-selected border-indigo-500' : ''}">
-                    ${avatar}
-                </button>
-            `).join('');
-            
             root.innerHTML = `
                 <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-4">
                     <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
@@ -457,33 +515,132 @@
                             </h1>
                             <p class="text-gray-600">한국 문화 카드 맞추기 게임</p>
                         </div>
-                        
-                        <div class="mb-6">
-                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
-                                프로필 아바타 선택
-                            </label>
-                            <div class="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                                ${profileGrid}
-                            </div>
-                            
-                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
-                                이름을 입력해주세요
-                            </label>
-                            <input type="text" id="player-name" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" placeholder="예: 홍길동" maxlength="10" />
-                        </div>
-                        
-                        <button onclick="startGameWithName()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                            게임 시작하기
+                        <button onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#fff" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.603-.015 2.898-.015 3.285 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                            구글 계정으로 시작하기
                         </button>
-                        
+                        <button onclick="loginAsGuest()" class="w-full mt-3 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                            게스트로 시작하기
+                        </button>
                         <div class="mt-6 pt-6 border-t border-gray-200">
                             <p class="text-sm text-gray-600 mb-3">📚 게임 방법</p>
                             <div class="text-xs text-gray-500 space-y-1">
                                 <p>• 같은 K-Culture 카드를 찾아 맞추세요</p>
-                                <p>• 모든 카드를 맞추면 도감에 저장됩니다</p>
-                                <p>• AI 학습으로 더 자세히 공부할 수 있어요</p>
+                                <p>• AI 학습 정답 시 10포인트 획득</p>
+                                <p>• 유료 아바타는 50포인트!</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderSelectNickname = () => {
+            root.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-teal-100 p-4">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-4">📝 닉네임 설정</h2>
+                        <p class="text-gray-600 mb-6">다른 사람들이 볼 이름을 정해주세요</p>
+                        <input type="text" id="nickname-input" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 mb-6 text-center text-lg" placeholder="닉네임 입력 (최대 10자)" maxlength="10" />
+                        <button onclick="setNickname()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            `;
+            const saved = localStorage.getItem(`playerName_${userId}`);
+            if (saved) {
+                document.getElementById('nickname-input').value = saved;
+            }
+        };
+
+        const renderSelectAvatar = () => {
+            const grid = FREE_AVATARS.map(avatar => `
+                <button onclick="selectAvatar('${avatar}')" class="w-12 h-12 text-2xl rounded-full border-2 border-gray-300 hover:border-indigo-400 transition-all duration-200 ${playerAvatar === avatar ? 'profile-selected border-indigo-500' : ''}">
+                    ${avatar}
+                </button>
+            `).join('');
+            root.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 p-4">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                        <h2 class="text-2xl font-bold text-indigo-600 mb-4">🎉 ${playerName}님, 환영합니다!</h2>
+                        <p class="text-gray-600 mb-6">무료 아바타를 하나 선택하세요</p>
+                        <div class="grid grid-cols-8 gap-2 mb-6 p-3 bg-gray-50 rounded-lg">
+                            ${grid}
+                        </div>
+                        <button onclick="selectAvatar('${playerAvatar}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                            선택 완료 → 게임 시작
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderProfile = () => {
+            points = parseInt(localStorage.getItem(`points_${userId}`)) || 0;
+            const owned = JSON.parse(localStorage.getItem(`ownedAvatars_${userId}`)) || [...FREE_AVATARS];
+            ownedAvatars = new Set(owned);
+            const allAvatars = [
+                ...FREE_AVATARS.map(a => ({ icon: a, price: 0, type: 'free' })),
+                ...PREMIUM_AVATARS.map(a => ({ icon: a, price: 50, type: 'premium' }))
+            ];
+            const avatarGrid = allAvatars.map(av => {
+                const isOwned = ownedAvatars.has(av.icon);
+                const isSelected = playerAvatar === av.icon;
+                const btnClass = isOwned
+                    ? `bg-green-100 border-2 border-green-500 hover:bg-green-200 ${isSelected ? 'ring-4 ring-indigo-500' : ''}`
+                    : `bg-gray-100 border-2 border-gray-300 opacity-70 hover:opacity-100`;
+                const action = isOwned
+                    ? `selectAvatar('${av.icon}')`
+                    : points >= av.price
+                        ? `buyAvatar('${av.icon}', ${av.price})`
+                        : '';
+                
+                let displayText = '';
+                if (isOwned) {
+                    displayText = isSelected ? '✓ 선택됨' : '선택';
+                } else if (av.price === 0) {
+                    displayText = '무료';
+                } else {
+                    displayText = points >= av.price ? `${av.price}P 구매` : `🔒 ${av.price}P`;
+                }
+                
+                return `
+                    <div class="flex flex-col items-center p-2 rounded-lg ${isOwned ? 'bg-green-50' : av.price > 0 ? 'bg-purple-50' : 'bg-gray-50'}">
+                        <div class="text-3xl mb-1 ${!isOwned && points < av.price ? 'opacity-50' : ''}">${av.icon}</div>
+                        ${av.price > 0 && !isOwned ? `<span class="text-xs text-purple-600 font-bold mb-1">⭐ ${av.price}P</span>` : ''}
+                        <button onclick="${action}" class="text-xs font-semibold px-3 py-1 rounded-full ${btnClass} transition-all duration-200" ${!isOwned && points < av.price ? 'disabled' : ''}>
+                            ${displayText}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            root.innerHTML = `
+                <div class="p-6 min-h-screen bg-indigo-50">
+                    <h1 class="text-3xl font-bold text-indigo-700 mb-2 text-center">👤 프로필 설정</h1>
+                    <div class="bg-white p-6 rounded-xl shadow-lg max-w-2xl mx-auto">
+                        <div class="text-center mb-6">
+                            <div class="text-6xl mb-2">${playerAvatar}</div>
+                            <p class="font-bold text-xl text-gray-800">${playerName}</p>
+                            <p class="text-indigo-600 font-semibold text-lg mt-1">💰 포인트: <span id="point-display">${points}</span>P</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <h3 class="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <span>🎨</span> 아바타 컬렉션
+                            </h3>
+                            <div class="bg-purple-50 p-3 rounded-lg mb-3">
+                                <p class="text-sm text-purple-700 font-semibold">⭐ 프리미엄 아바타는 50 포인트로 구매 가능!</p>
+                            </div>
+                            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                                ${avatarGrid}
+                            </div>
+                        </div>
+                        
+                        <button onclick="navigate('game')" class="w-full mt-4 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">게임으로 돌아가기</button>
                     </div>
                 </div>
             `;
@@ -499,16 +656,12 @@
             const isFlip = flipped.includes(card.id) || matched.includes(card.id);
             const isMatch = matched.includes(card.id);
             const cursor = isMatch ? 'cursor-default' : 'cursor-pointer';
-
             return `
                 <div class="aspect-square perspective ${cursor}" onclick="clickCard(${card.id})">
                     <div class="relative w-full h-full card-transition transform-3d ${isFlip ? 'flip' : ''}">
-                        <!-- 뒷면 -->
                         <div class="absolute backface-hidden w-full h-full bg-indigo-500 rounded-lg shadow-xl border-4 border-indigo-700 flex flex-col items-center justify-center">
                             <svg data-lucide="sparkles" class="w-8 h-8 text-yellow-300 animate-pulse"></svg>
                         </div>
-                        
-                        <!-- 앞면 -->
                         <div class="absolute backface-hidden w-full h-full bg-white rounded-lg shadow-xl border-4 border-green-400 flex flex-col items-center justify-center p-2 flip">
                             <span class="text-2xl md:text-4xl">${card.icon}</span>
                             <span class="text-xs md:text-sm font-semibold mt-1 text-gray-800 text-center">${card.name}</span>
@@ -518,9 +671,6 @@
             `;
         };
 
-        // ============================================
-        // 렌더링 - 페이지
-        // ============================================
         const renderGame = () => {
             const grid = cards.map(Card).join('');
             const modal = won ? `
@@ -550,7 +700,6 @@
                     </div>
                 </div>
             ` : '';
-
             root.innerHTML = `
                 <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
                     <div class="w-full max-w-xl flex justify-between items-center mb-4">
@@ -561,9 +710,9 @@
                                 <p class="text-lg font-bold text-indigo-600">${playerName || '익명'}</p>
                             </div>
                             <span class="text-2xl">${playerAvatar}</span>
+                            <button onclick="navigate('profile')" class="text-sm text-indigo-600 hover:underline ml-2">프로필</button>
                         </div>
                     </div>
-
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mb-6">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <div>
@@ -574,17 +723,14 @@
                                 <button onclick="startGame()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition">
                                     재시작
                                 </button>
-                                <button onclick="showAdminLogin()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-full shadow-lg transition" title="어드민 (게임 클리어)">
+                                <button onclick="showAdminLogin()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-full shadow-lg transition" title="어드민 메뉴">
                                     <svg data-lucide="settings" class="w-4 h-4"></svg>
                                 </button>
                             </div>
                         </div>
-
                         <div class="grid grid-cols-4 gap-3 md:gap-4">${grid}</div>
                     </div>
-                    
                     ${modal}
-
                     <div class="mt-6 flex flex-wrap justify-center gap-3">
                         ${NavBtn('카드 도감', 'cards')}
                         ${NavBtn('AI 학습', 'ai')}
@@ -598,7 +744,6 @@
             const list = ITEMS.map((item, i) => {
                 const isUnlocked = unlockedCards.has(item.name);
                 const isSelected = selectedCard?.name === item.name;
-                
                 if (!isUnlocked) {
                     return `
                         <div class="bg-gray-200 p-4 rounded-xl shadow-lg border-2 border-gray-400 relative">
@@ -611,7 +756,6 @@
                         </div>
                     `;
                 }
-                
                 return `
                     <div onclick="selectCard(${i})" class="bg-white p-4 rounded-xl shadow-lg border-2 ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-yellow-400'} hover:shadow-xl transition cursor-pointer">
                         <div class="text-4xl text-center mb-2">${item.icon}</div>
@@ -620,7 +764,6 @@
                     </div>
                 `;
             }).join('');
-
             const detailView = selectedCard ? `
                 <div class="bg-white p-6 rounded-xl shadow-2xl border-2 border-indigo-500 max-w-lg mx-auto mt-6">
                     <div class="text-6xl text-center mb-4">${selectedCard.icon}</div>
@@ -632,18 +775,14 @@
                     </button>
                 </div>
             ` : '';
-
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-yellow-50">
                     <h1 class="text-3xl font-bold text-yellow-700 mb-2 text-center">📚 카드 도감</h1>
                     <p class="text-center text-gray-600 mb-6">게임에서 맞춘 카드만 확인할 수 있습니다 (${unlockedCards.size}/${ITEMS.length})</p>
-                    
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
                         ${list}
                     </div>
-                    
                     ${detailView}
-                    
                     <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto">
                         게임으로
                     </button>
@@ -656,22 +795,15 @@
             const unsolvedQuizzes = getUnsolvedQuizzes();
             const totalQuizzes = unlockedCards.size * 2;
             const solvedCount = solvedQuizzes.size;
-
-            // 모든 퀴즈를 다 푼 경우
             if (unsolvedQuizzes.length === 0 && unlockedCards.size > 0) {
                 root.innerHTML = `
                     <div class="p-6 min-h-screen bg-blue-50">
                         <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                        
                         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
                             <div class="text-6xl mb-4">🎉</div>
                             <h2 class="text-2xl font-bold text-green-600 mb-4">축하합니다!</h2>
-                            <p class="text-lg text-gray-700 mb-6">
-                                모든 카드에 대한 문제를 다 풀었습니다!<br>
-                                (총 ${totalQuizzes}개 문제 완료)
-                            </p>
+                            <p class="text-lg text-gray-700 mb-6">모든 카드에 대한 문제를 다 풀었습니다!<br>(총 ${totalQuizzes}개 문제 완료)</p>
                             <p class="text-md text-gray-600 mb-6">다시 공부하시겠습니까?</p>
-                            
                             <div class="flex gap-3 justify-center">
                                 <button onclick="resetQuizzes()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                                     처음부터 다시
@@ -685,21 +817,14 @@
                 `;
                 return;
             }
-
-            // 언락된 카드가 없는 경우
             if (unlockedCards.size === 0) {
                 root.innerHTML = `
                     <div class="p-6 min-h-screen bg-blue-50">
                         <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                        
                         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl mx-auto text-center">
                             <div class="text-6xl mb-4">🔒</div>
                             <h2 class="text-2xl font-bold text-gray-700 mb-4">학습할 카드가 없습니다</h2>
-                            <p class="text-lg text-gray-600 mb-6">
-                                게임에서 카드를 맞춰 잠금 해제한 후<br>
-                                AI 학습을 시작할 수 있습니다!
-                            </p>
-                            
+                            <p class="text-lg text-gray-600 mb-6">게임에서 카드를 맞춰 잠금 해제한 후<br>AI 학습을 시작할 수 있습니다!</p>
                             <button onclick="navigate('game')" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
                                 게임 시작하기
                             </button>
@@ -708,7 +833,6 @@
                 `;
                 return;
             }
-
             const quizBlock = quiz ? `
                 <div class="p-4 bg-gray-100 rounded-lg border-l-4 border-indigo-400 mb-4">
                     <div class="flex items-center gap-2 mb-2">
@@ -728,17 +852,14 @@
                     정답 확인
                 </button>
             ` : '';
-
             const feedbackBlock = feedback ? `
                 <div class="p-4 rounded-lg font-semibold mt-4 whitespace-pre-line ${feedback.type === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                     ${feedback.msg}
                 </div>
             ` : '';
-
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-blue-50">
                     <h1 class="text-3xl font-bold text-blue-700 mb-6 text-center">🎓 AI 학습 센터</h1>
-                    
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mx-auto">
                         <div class="flex justify-between items-center mb-4">
                             <p class="text-lg font-semibold text-gray-800">
@@ -748,16 +869,13 @@
                                 ${solvedCount}/${totalQuizzes} 완료
                             </span>
                         </div>
-
                         ${processing && !quiz ? '<div class="text-center text-indigo-500 p-4"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6"></svg> 퀴즈 생성 중...</div>' : ''}
                         ${!processing || quiz ? quizBlock : ''}
                         ${feedbackBlock}
-                        
                         <button onclick="makeQuiz()" class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
                             ${quiz ? '다음 문제' : '퀴즈 시작'}
                         </button>
                     </div>
-                    
                     <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto">
                         게임으로
                     </button>
@@ -772,18 +890,13 @@
             } else if (data.length === 0) {
                 content = '<p class="text-center text-gray-500 p-4">아직 기록이 없습니다!</p>';
             } else {
-                // 시도 횟수가 적은 순으로 정렬 (이미 정렬되어 있지만 확실하게)
                 const sortedData = [...data].sort((a, b) => {
-                    if (a.moves === b.moves) {
-                        return new Date(a.time) - new Date(b.time);
-                    }
+                    if (a.moves === b.moves) return new Date(a.time) - new Date(b.time);
                     return a.moves - b.moves;
                 });
-
                 content = sortedData.map((r, i) => {
                     const isMe = r.uid === userId;
                     const medalEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-                    
                     return `
                         <div class="flex justify-between items-center p-3 rounded-lg transition ${isMe ? 'bg-yellow-100 font-bold border-2 border-yellow-400 shadow-md' : 'bg-gray-50 hover:bg-gray-100'}">
                             <span class="text-xl font-bold ${i < 3 ? 'text-yellow-600' : 'text-gray-700'} w-12">
@@ -803,19 +916,16 @@
                     `;
                 }).join('');
             }
-
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-purple-50">
                     <h1 class="text-3xl font-bold text-purple-700 mb-2 text-center">🏆 명예의 전당</h1>
                     <p class="text-center text-gray-600 mb-6">최소 시도 횟수로 클리어한 랭킹</p>
-                    
                     <div class="p-6 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
                         <h2 class="text-xl font-bold mb-4 text-center text-indigo-700 border-b pb-2 flex items-center justify-center gap-2">
                             <svg data-lucide="trophy" class="w-5 h-5"></svg>
                             TOP 20
                         </h2>
                         <div class="space-y-2 max-h-96 overflow-y-auto">${content}</div>
-                        
                         ${playerName ? `
                             <div class="mt-4 pt-4 border-t border-gray-200 text-center flex items-center justify-center gap-2">
                                 <span class="text-xl">${playerAvatar}</span>
@@ -823,9 +933,7 @@
                             </div>
                         ` : ''}
                     </div>
-                    
                     <button onclick="navigate('game')" class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto gap-2">
-                        
                         게임으로
                     </button>
                 </div>
@@ -834,28 +942,23 @@
 
         const render = () => {
             if (!isReady) return;
-
-            // 게임 시작 전이면 메인 화면 표시
-            if (!gameStarted) {
-                renderMain();
-                return;
-            }
-
             switch (page) {
+                case 'main': renderMain(); break;
+                case 'selectNickname': renderSelectNickname(); break;
+                case 'selectAvatar': renderSelectAvatar(); break;
+                case 'profile': renderProfile(); break;
                 case 'game': renderGame(); break;
-                case 'cards': 
-                    renderCards();
-                    break;
+                case 'cards': renderCards(); break;
                 case 'ai': 
                     renderAI();
                     if (!quiz && !processing) makeQuiz();
                     break;
-                case 'ranking': 
+                case 'ranking':
                     renderRanking([], true);
                     watchRanking();
                     break;
+                default: renderMain();
             }
-            
             if (window.createIcons && window.icons) {
                 window.createIcons({ icons: window.icons });
             }
@@ -871,57 +974,49 @@
                 render();
                 return;
             }
-            
             app = initializeApp(config.firebase);
             db = getFirestore(app);
             auth = getAuth(app);
 
             onAuthStateChanged(auth, (user) => {
-                userId = user ? user.uid : crypto.randomUUID();
-                isReady = true;
-                render(); // 메인 화면 렌더링
-            });
-
-            try {
-                if (config.authToken) {
-                    await signInWithCustomToken(auth, config.authToken);
+                if (user) {
+                    userId = user.uid;
                 } else {
-                    await signInAnonymously(auth);
+                    userId = crypto.randomUUID();
                 }
-            } catch (err) {
-                console.error("Auth error:", err);
-            }
+                // 로컬 데이터 로드
+                playerName = localStorage.getItem(`playerName_${userId}`) || '';
+                playerAvatar = localStorage.getItem(`playerAvatar_${userId}`) || '😊';
+                points = parseInt(localStorage.getItem(`points_${userId}`)) || 0;
+                const savedOwned = localStorage.getItem(`ownedAvatars_${userId}`);
+                ownedAvatars = new Set(savedOwned ? JSON.parse(savedOwned) : [...FREE_AVATARS]);
+                isReady = true;
+                render();
+            });
         }
-        
+
+        // ============================================
         // 전역 함수 등록
+        // ============================================
         window.clickCard = clickCard;
         window.startGame = startGame;
         window.navigate = navigate;
         window.makeQuiz = makeQuiz;
         window.submitAnswer = submitAnswer;
         window.showAdminLogin = showAdminLogin;
-        window.checkAdminPassword = checkAdminPassword;
         window.closeAdminLogin = closeAdminLogin;
-        window.selectAvatar = (avatar) => {
-            playerAvatar = avatar;
-            renderMain();
-            if (window.createIcons && window.icons) {
-                window.createIcons({ icons: window.icons });
-            }
-        };
-        window.startGameWithName = () => {
-            const input = document.getElementById('player-name');
-            playerName = input?.value.trim() || '익명';
-            gameStarted = true;
-            startGame();
-            render();
-        };
+        window.closeAdminMenus = closeAdminMenus;
+        window.verifyAdminPassword = verifyAdminPassword;
+        window.giveAdminPoints = giveAdminPoints;
+        window.adminClearGame = adminClearGame;
+        window.loginWithGoogle = loginWithGoogle;
+        window.loginAsGuest = loginAsGuest;
+        window.setNickname = setNickname;
+        window.selectAvatar = selectAvatar;
+        window.buyAvatar = buyAvatar;
         window.selectCard = (index) => {
             selectedCard = ITEMS[index];
             renderCards();
-            if (window.createIcons && window.icons) {
-                window.createIcons({ icons: window.icons });
-            }
         };
         window.learnCard = () => {
             if (selectedCard) {
@@ -934,9 +1029,6 @@
             quiz = null;
             feedback = null;
             renderAI();
-            if (window.createIcons && window.icons) {
-                window.createIcons({ icons: window.icons });
-            }
         };
 
         window.onload = init;
