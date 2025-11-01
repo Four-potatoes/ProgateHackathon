@@ -64,7 +64,6 @@
 </head>
 <body class="min-h-screen font-sans">
     <div id="app" class="min-h-screen">
-        <!-- 로딩 화면 -->
         <div class="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
             <svg data-lucide="loader-2" class="animate-spin text-purple-400 w-12 h-12"></svg>
             <p class="ml-4 text-xl text-purple-200 mt-4">로딩 중...</p>
@@ -416,85 +415,103 @@
         };
 
         // ============================================
-        // AI 학습
+        // AI 학습 (AI 기능 구현 부분)
         // ============================================
         const getUnsolvedQuizzes = () => {
             const unlockedItems = ITEMS.filter(item => unlockedCards.has(item.name));
             const unsolved = [];
             unlockedItems.forEach(item => {
-                if (!solvedQuizzes.has(`${item.name}-fill`)) unsolved.push({ item, type: 'fill' });
-                if (!solvedQuizzes.has(`${item.name}-write`)) unsolved.push({ item, type: 'write' });
+                // AI 퀴즈는 항목당 1개로 가정
+                if (!solvedQuizzes.has(`${item.name}-ai`)) unsolved.push({ item, type: 'ai_mc' });
             });
             return unsolved;
         };
 
+        // AI 퀴즈 생성 시뮬레이션 함수
         const makeQuiz = (specificItem = null) => {
             processing = true;
             feedback = null;
             renderAI();
-            setTimeout(() => {
-                const unsolvedQuizzes = getUnsolvedQuizzes();
-                if (unsolvedQuizzes.length === 0) {
-                    processing = false;
-                    quiz = null;
-                    renderAI();
-                    return;
-                }
-                let selectedQuiz;
-                if (specificItem) {
-                    const itemQuizzes = unsolvedQuizzes.filter(q => q.item.name === specificItem.name);
-                    selectedQuiz = itemQuizzes.length > 0
-                        ? itemQuizzes[Math.floor(Math.random() * itemQuizzes.length)]
-                        : unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
-                } else {
-                    selectedQuiz = unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
-                }
-                const { item, type } = selectedQuiz;
-                if (type === 'fill') {
-                    const blankedDesc = item.desc.replace(item.name, '___');
-                    quiz = {
-                        type: 'fill',
-                        question: `다음 빈칸에 알맞은 K-Culture 항목을 채워주세요:\n"${blankedDesc}"`,
-                        answer: item.name,
-                        item: item,
-                        quizId: `${item.name}-fill`
-                    };
-                } else {
-                    quiz = {
-                        type: 'write',
-                        question: `'${item.name}'${item.icon}에 대해 설명해주세요.`,
-                        answer: item.desc,
-                        item: item,
-                        keyword: item.name,
-                        quizId: `${item.name}-write`
-                    };
-                }
+
+            const unsolvedQuizzes = getUnsolvedQuizzes();
+            if (unsolvedQuizzes.length === 0 && unlockedCards.size > 0) {
                 processing = false;
-                const input = document.getElementById('answer');
-                if (input) input.value = '';
+                quiz = null;
+                renderAI();
+                return;
+            }
+
+            // 1. 아이템 선택
+            let selectedQuiz = specificItem 
+                ? unsolvedQuizzes.find(q => q.item.name === specificItem.name) || unsolvedQuizzes[0]
+                : unsolvedQuizzes[Math.floor(Math.random() * unsolvedQuizzes.length)];
+            
+            const selectedItem = selectedQuiz.item;
+
+            // 2. AI 퀴즈 데이터 생성 시뮬레이션 (객관식)
+            const questionText = `${selectedItem.name}${selectedItem.icon}에 대한 설명으로 옳은 것을 고르세요.`;
+            const correctAnswer = selectedItem.desc;
+
+            // 오답 생성 (다른 아이템의 설명 이용)
+            const incorrectItems = ITEMS.filter(i => i.name !== selectedItem.name);
+            const shuffledIncorrect = shuffle(incorrectItems);
+            
+            // 옵션 리스트 생성 및 섞기: 다른 항목의 설명 3개와 정답 1개
+            let options = shuffle([...shuffledIncorrect.slice(0, 3).map(i => i.desc), correctAnswer]);
+            
+            // 퀴즈 객체 업데이트
+            quiz = {
+                type: 'ai_mc', // AI Multiple Choice
+                question: questionText,
+                options: options,
+                answer: correctAnswer, // 정답 텍스트
+                item: selectedItem,
+                quizId: `${selectedItem.name}-ai`
+            };
+
+            // 3. API 호출 시뮬레이션 (1.5초 지연)
+            // (실제로는 백엔드 API를 fetch로 호출해야 함)
+            setTimeout(() => {
+                processing = false;
+                document.getElementById('answer-form')?.reset();
                 renderAI();
             }, 1500);
         };
 
+        // AI 답변 평가 시뮬레이션 함수
         const submitAnswer = () => {
-            const input = document.getElementById('answer');
-            const userAnswer = input?.value.trim();
-            if (!quiz || processing || !userAnswer) return;
+            const form = document.getElementById('answer-form');
+            // 사용자가 선택한 옵션의 텍스트 값
+            const selectedOption = form ? form.querySelector('input[name="answer-option"]:checked')?.value : null;
+            
+            if (!quiz || processing || !selectedOption) {
+                feedback = { type: 'wrong', msg: '답변을 선택해주세요.' };
+                renderAI();
+                return;
+            }
             processing = true;
             renderAI();
+
+            // AI 평가 시뮬레이션 (1초 지연)
+            // (실제로는 백엔드 API를 fetch로 호출하여 AI 평가 결과를 받아와야 함)
             setTimeout(() => {
-                let isCorrect = false;
-                if (quiz.type === 'fill') {
-                    isCorrect = userAnswer.toLowerCase() === quiz.answer.toLowerCase();
-                    feedback = isCorrect
-                        ? { type: 'correct', msg: `✅ 정답! ${quiz.item.icon} ${quiz.item.name}에 대해 완벽하게 알고 계시네요!` }
-                        : { type: 'wrong', msg: `❌ 아쉽지만 틀렸어요. 정답은 '${quiz.answer}'입니다.\n${quiz.item.desc}` };
+                const isCorrect = selectedOption === quiz.answer;
+                
+                // AI 피드백 시뮬레이션
+                let feedbackMsg;
+                if (isCorrect) {
+                    feedbackMsg = `${quiz.item.name}에 대해 정확히 알고 계시네요! 이 문제는 ${quiz.item.desc}에 대한 것이었습니다.`;
                 } else {
-                    isCorrect = userAnswer.length >= 5;
-                    feedback = isCorrect
-                        ? { type: 'correct', msg: `✅ 좋아요! ${quiz.item.icon} ${quiz.item.name}에 대해 잘 설명해주셨어요!\n참고: ${quiz.answer}` }
-                        : { type: 'wrong', msg: `❌ 조금 더 자세히 설명해주세요! (최소 5글자 이상)\n힌트: ${quiz.answer}` };
+                    const correctItem = ITEMS.find(item => item.desc === selectedOption);
+                    
+                    feedbackMsg = `아쉽지만 틀렸어요. 선택하신 "${selectedOption}"은 ${correctItem ? correctItem.name : '다른 항목'}에 대한 설명입니다. 정답은 "${quiz.answer}"입니다.`;
                 }
+                
+                feedback = { 
+                    type: isCorrect ? 'correct' : 'wrong', 
+                    msg: isCorrect ? `✅ 정답! ${feedbackMsg}` : `❌ 오답. ${feedbackMsg}`
+                };
+
                 if (isCorrect) {
                     solvedQuizzes.add(quiz.quizId);
                     points += 10;
@@ -693,11 +710,9 @@
             return `
                 <div class="aspect-square perspective ${cursor} card-hover" onclick="clickCard(${card.id})">
                     <div class="relative w-full h-full card-transition transform-3d ${isFlip ? 'flip' : ''}">
-                        <!-- 앞면 (뒷면) -->
                         <div class="absolute backface-hidden w-full h-full glass-effect-strong rounded-2xl shadow-2xl border-2 border-purple-500 flex flex-col items-center justify-center p-4">
                             <svg data-lucide="sparkles" class="w-12 h-12 text-yellow-300 animate-pulse"></svg>
                         </div>
-                        <!-- 뒷면 (정답) -->
                         <div class="absolute backface-hidden w-full h-full bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-2xl border-4 ${card.color} border-opacity-50 flex flex-col p-3 flip">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-lg font-bold text-gray-800">${card.name}</span>
@@ -754,7 +769,6 @@
             root.innerHTML = `
                 <div class="p-4 min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
                     <div class="max-w-6xl mx-auto">
-                        <!-- 헤더 -->
                         <div class="glass-effect-strong p-4 rounded-2xl mb-4 border border-purple-500/50">
                             <div class="flex justify-between items-center">
                                 <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">K-Culture Memory</h1>
@@ -769,7 +783,6 @@
                             </div>
                         </div>
 
-                        <!-- 게임 정보 -->
                         <div class="glass-effect-strong p-6 rounded-2xl shadow-2xl mb-6 border border-purple-500/50">
                             <div class="flex justify-between items-center mb-4">
                                 <div class="flex gap-4">
@@ -791,19 +804,16 @@
                                     </button>
                                 </div>
                             </div>
-                            <!-- 진행 바 -->
                             <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
                                 <div class="progress-bar bg-gradient-to-r from-green-500 to-emerald-600 h-full rounded-full" style="width: ${progress}%"></div>
                             </div>
                             <p class="text-xs text-purple-200 text-center mt-2">${Math.round(progress)}% 완료</p>
                         </div>
 
-                        <!-- 카드 그리드 -->
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
                             ${grid}
                         </div>
 
-                        <!-- 네비게이션 -->
                         <div class="flex flex-wrap justify-center gap-3">
                             ${NavBtn('📚 카드 도감', 'cards', '')}
                             ${NavBtn('🎓 AI 학습', 'ai', '')}
@@ -874,9 +884,8 @@
         };
 
         const renderAI = () => {
-            const answerVal = document.getElementById('answer')?.value || '';
             const unsolvedQuizzes = getUnsolvedQuizzes();
-            const totalQuizzes = unlockedCards.size * 2;
+            const totalQuizzes = unlockedCards.size;
             const solvedCount = solvedQuizzes.size;
             const progressPercent = totalQuizzes > 0 ? (solvedCount / totalQuizzes * 100) : 0;
             
@@ -919,43 +928,50 @@
                 `;
                 return;
             }
+            
             const quizBlock = quiz ? `
                 <div class="p-5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border-l-4 border-purple-400 mb-6">
                     <div class="flex items-center gap-3 mb-3">
                         <span class="text-3xl">${quiz.item.icon}</span>
                         <span class="text-sm font-semibold text-purple-300 px-3 py-1 bg-white/10 rounded-full">
-                            ${quiz.type === 'fill' ? '📝 빈칸 채우기' : '✏️ 정보 쓰기'}
+                            🤖 AI 객관식 퀴즈
                         </span>
                     </div>
-                    <p class="text-lg text-white whitespace-pre-line">${quiz.question}</p>
+                    <p class="text-lg font-bold text-white whitespace-pre-line">${quiz.question}</p>
                 </div>
-                ${quiz.type === 'fill' ? `
-                    <input type="text" id="answer" value="${answerVal}" class="w-full p-4 bg-white/20 border-2 border-purple-400 rounded-lg focus:border-purple-300 text-white placeholder-purple-200 mb-4 text-lg" placeholder="정답 입력 (예: 한복)" />
-                ` : `
-                    <textarea id="answer" class="w-full p-4 bg-white/20 border-2 border-purple-400 rounded-lg focus:border-purple-300 text-white placeholder-purple-200 mb-4 min-h-32 text-lg" placeholder="자유롭게 설명해주세요 (최소 5글자)">${answerVal}</textarea>
-                `}
-                <button onclick="submitAnswer()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
-                    정답 확인
-                </button>
+                <form id="answer-form" onsubmit="event.preventDefault(); submitAnswer();">
+                    <div class="space-y-3 mb-4">
+                        ${quiz.options.map((option, index) => `
+                            <label class="flex items-center p-3 rounded-lg border-2 border-purple-500/50 bg-white/10 hover:bg-white/20 transition cursor-pointer">
+                                <input type="radio" name="answer-option" value="${option}" class="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 focus:ring-purple-500" ${processing ? 'disabled' : ''}>
+                                <span class="ml-3 text-white text-base">${String.fromCharCode(65 + index)}. ${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
+                        정답 확인
+                    </button>
+                </form>
             ` : '';
+            
             const feedbackBlock = feedback ? `
                 <div class="p-5 rounded-lg font-semibold mt-6 whitespace-pre-line border-2 ${feedback.type === 'correct' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700'}">
                     ${feedback.msg}
                 </div>
             ` : '';
+            
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
                     <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 mb-2 text-center">🎓 AI 학습 센터</h1>
-                    <p class="text-center text-purple-200 mb-8">하츄핑과 함께 K-Culture를 배워봐요!</p>
+                    <p class="text-center text-purple-200 mb-8">🤖 AI가 생성한 K-Culture 퀴즈로 학습해봐요!</p>
                     
                     <div class="glass-effect-strong p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-auto border border-blue-500">
-                        <!-- 진행 상황 -->
                         <div class="flex justify-between items-center mb-6">
                             <div class="flex items-center gap-3">
                                 <span class="text-4xl">🎓</span>
                                 <div>
                                     <p class="text-lg font-semibold text-white">
-                                        <span class="text-blue-300">하츄핑:</span> K-Culture 퀴즈
+                                        <span class="text-blue-300">AI:</span> K-Culture 퀴즈
                                     </p>
                                     <p class="text-xs text-purple-300">한국 문화를 배워봐요!</p>
                                 </div>
@@ -967,12 +983,11 @@
                             </div>
                         </div>
                         
-                        <!-- 진행 바 -->
                         <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden mb-8">
                             <div class="progress-bar bg-gradient-to-r from-blue-500 to-cyan-600 h-full rounded-full" style="width: ${progressPercent}%"></div>
                         </div>
                         
-                        ${processing && !quiz ? '<div class="text-center text-blue-400 p-8"><svg data-lucide="loader-2" class="animate-spin inline w-8 h-8 mb-2"></svg><p>퀴즈 생성 중...</p></div>' : ''}
+                        ${processing && !quiz ? '<div class="text-center text-blue-400 p-8"><svg data-lucide="loader-2" class="animate-spin inline w-8 h-8 mb-2"></svg><p>AI가 퀴즈 생성 중...</p></div>' : ''}
                         ${!processing || quiz ? quizBlock : ''}
                         ${feedbackBlock}
                         <button onclick="makeQuiz()" class="w-full mt-6 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-4 rounded-lg shadow-lg transition ${processing ? 'opacity-50' : ''}" ${processing ? 'disabled' : ''}>
@@ -1143,7 +1158,8 @@
         window.learnCard = () => {
             if (selectedCard) {
                 navigate('ai');
-                setTimeout(() => makeQuiz(selectedCard), 100);
+                // 카드 도감에서 특정 카드를 선택했을 때 해당 카드 퀴즈로 바로 시작
+                setTimeout(() => makeQuiz(selectedCard), 100); 
             }
         };
         window.resetQuizzes = () => {
