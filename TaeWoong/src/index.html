@@ -264,14 +264,71 @@
         };
 
         // ===================================
-        // Google 인증 함수 (백엔드 API 사용)
+        // 회원가입/로그인 함수
         // ===================================
-        const signInWithGoogle = async () => {
+        const signup = async (email, password, name, avatar) => {
             try {
-                // 백엔드 Google OAuth URL로 리다이렉트
-                window.location.href = `${API_BASE_URL}/auth/google`;
+                const response = await apiCall('/auth/signup', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password, name, avatar })
+                });
+
+                authToken = response.token;
+                localStorage.setItem('auth_token', authToken);
+
+                currentUser = response.user;
+                userProfile = {
+                    uid: currentUser.id,
+                    email: currentUser.email,
+                    displayName: currentUser.name,
+                    photoURL: null
+                };
+
+                playerName = currentUser.name;
+                playerAvatar = currentUser.avatar;
+                playerNameSet = true;
+
+                await loadUserData();
+
+                console.log('회원가입 성공:', playerName);
+                currentPage = 'stages';
+                render();
             } catch (error) {
-                console.error('Google 로그인 실패:', error);
+                alert(error.message || '회원가입에 실패했습니다.');
+                console.error('회원가입 실패:', error);
+            }
+        };
+
+        const login = async (email, password) => {
+            try {
+                const response = await apiCall('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                authToken = response.token;
+                localStorage.setItem('auth_token', authToken);
+
+                currentUser = response.user;
+                userProfile = {
+                    uid: currentUser.id,
+                    email: currentUser.email,
+                    displayName: currentUser.name,
+                    photoURL: null
+                };
+
+                playerName = currentUser.name;
+                playerAvatar = currentUser.avatar;
+                playerNameSet = true;
+
+                await loadUserData();
+
+                console.log('로그인 성공:', playerName);
+                currentPage = 'stages';
+                render();
+            } catch (error) {
+                alert(error.message || '로그인에 실패했습니다.');
+                console.error('로그인 실패:', error);
             }
         };
 
@@ -506,6 +563,8 @@
             }
         });
 
+        let welcomeMode = 'initial'; // 'initial', 'guest', 'login', 'signup'
+
         const renderWelcome = () => {
             const PROFILE_AVATARS = ['😊', '😎', '🥳', '🤓', '😇', '🤗', '🥰', '😁', '🙂', '😄', '😃', '😀', '🤩', '😍', '🥸', '😏'];
 
@@ -515,10 +574,182 @@
                 </button>
             `).join('');
 
+            let formContent = '';
+
+            if (welcomeMode === 'initial') {
+                formContent = `
+                    <div class="space-y-4">
+                        <button
+                            onclick="window.switchMode('guest')"
+                            class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105"
+                        >
+                            게스트로 시작하기
+                        </button>
+
+                        <div class="flex gap-2">
+                            <button
+                                onclick="window.switchMode('login')"
+                                class="flex-1 bg-white border-2 border-indigo-500 hover:bg-indigo-50 text-indigo-600 font-bold py-3 px-4 rounded-lg transition"
+                            >
+                                로그인
+                            </button>
+                            <button
+                                onclick="window.switchMode('signup')"
+                                class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition"
+                            >
+                                회원가입
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (welcomeMode === 'guest') {
+                formContent = `
+                    <div class="mb-6">
+                        <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                            프로필 아바타 선택
+                        </label>
+                        <div class="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                            ${profileGrid}
+                        </div>
+
+                        <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                            닉네임 입력
+                        </label>
+                        <input
+                            type="text"
+                            id="playerNameInput"
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                            placeholder="예: 홍길동"
+                            maxlength="10"
+                        />
+                    </div>
+
+                    <button
+                        onclick="window.startGameAsGuest()"
+                        class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105 mb-3"
+                    >
+                        게임 시작 (데이터 저장 안됨)
+                    </button>
+
+                    <button
+                        onclick="window.switchMode('initial')"
+                        class="w-full bg-white border-2 border-gray-300 hover:border-indigo-500 text-gray-700 font-bold py-3 px-4 rounded-lg transition"
+                    >
+                        뒤로 가기
+                    </button>
+                `;
+            } else if (welcomeMode === 'login') {
+                formContent = `
+                    <div class="mb-6 space-y-4">
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                이메일
+                            </label>
+                            <input
+                                type="email"
+                                id="emailInput"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="example@email.com"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                비밀번호
+                            </label>
+                            <input
+                                type="password"
+                                id="passwordInput"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="비밀번호"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onclick="window.submitLogin()"
+                        class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105 mb-3"
+                    >
+                        로그인
+                    </button>
+
+                    <button
+                        onclick="window.switchMode('initial')"
+                        class="w-full bg-white border-2 border-gray-300 hover:border-indigo-500 text-gray-700 font-bold py-3 px-4 rounded-lg transition"
+                    >
+                        뒤로 가기
+                    </button>
+                `;
+            } else if (welcomeMode === 'signup') {
+                formContent = `
+                    <div class="mb-6 space-y-4">
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                프로필 아바타 선택
+                            </label>
+                            <div class="grid grid-cols-8 gap-2 p-3 bg-gray-50 rounded-lg">
+                                ${profileGrid}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                이메일
+                            </label>
+                            <input
+                                type="email"
+                                id="emailInput"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="example@email.com"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                비밀번호
+                            </label>
+                            <input
+                                type="password"
+                                id="passwordInput"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="비밀번호 (최소 6자)"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                닉네임
+                            </label>
+                            <input
+                                type="text"
+                                id="nameInput"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="닉네임"
+                                maxlength="10"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onclick="window.submitSignup()"
+                        class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105 mb-3"
+                    >
+                        회원가입
+                    </button>
+
+                    <button
+                        onclick="window.switchMode('initial')"
+                        class="w-full bg-white border-2 border-gray-300 hover:border-indigo-500 text-gray-700 font-bold py-3 px-4 rounded-lg transition"
+                    >
+                        뒤로 가기
+                    </button>
+                `;
+            }
+
             appContainer.innerHTML = `
                 <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-4">
-                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-                        <div class="mb-6">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                        <div class="mb-6 text-center">
                             <div class="text-6xl mb-4">🎮</div>
                             <h1 class="text-4xl font-extrabold text-indigo-600 mb-2">
                                 K-Everything<br>Memory Game
@@ -526,55 +757,71 @@
                             <p class="text-gray-600">한국 문화재, 음식, 영화를 배우는 카드 게임</p>
                         </div>
 
-                        <div class="mb-6">
-                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
-                                프로필 아바타 선택
-                            </label>
-                            <div class="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                                ${profileGrid}
-                            </div>
+                        ${formContent}
 
-                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
-                                이름을 입력해주세요
-                            </label>
-                            <input
-                                type="text"
-                                id="playerNameInput"
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
-                                placeholder="예: 홍길동"
-                                maxlength="10"
-                            />
-                        </div>
-
-                        <button
-                            onclick="window.startGameWithName()"
-                            class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105"
-                        >
-                            게임 시작하기
-                        </button>
-
-                        <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="mt-6 pt-6 border-t border-gray-200 text-center">
                             <p class="text-sm text-gray-600 mb-3">📚 게임 방법</p>
                             <div class="text-xs text-gray-500 space-y-1">
                                 <p>• 같은 카드를 찾아 맞추세요</p>
                                 <p>• 스테이지를 클리어하면 다음 단계 잠금 해제</p>
-                                <p>• 도감에서 클리어한 항목을 확인할 수 있어요</p>
+                                <p>• 회원가입하면 데이터가 저장됩니다</p>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Enter 키로도 시작 가능
+            // Enter 키 이벤트
             setTimeout(() => {
-                const input = document.getElementById('playerNameInput');
-                if (input) {
-                    input.focus();
-                    input.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            window.startGameWithName();
-                        }
-                    });
+                if (welcomeMode === 'guest') {
+                    const input = document.getElementById('playerNameInput');
+                    if (input) {
+                        input.focus();
+                        input.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') window.startGameAsGuest();
+                        });
+                    }
+                } else if (welcomeMode === 'login') {
+                    const emailInput = document.getElementById('emailInput');
+                    const passwordInput = document.getElementById('passwordInput');
+
+                    if (emailInput) {
+                        emailInput.focus();
+                        emailInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                if (passwordInput) passwordInput.focus();
+                            }
+                        });
+                    }
+
+                    if (passwordInput) {
+                        passwordInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') window.submitLogin();
+                        });
+                    }
+                } else if (welcomeMode === 'signup') {
+                    const emailInput = document.getElementById('emailInput');
+                    const passwordInput = document.getElementById('passwordInput');
+                    const nameInput = document.getElementById('nameInput');
+
+                    if (emailInput) {
+                        emailInput.focus();
+                        emailInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter' && passwordInput) passwordInput.focus();
+                        });
+                    }
+
+                    if (passwordInput) {
+                        passwordInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter' && nameInput) nameInput.focus();
+                        });
+                    }
+
+                    if (nameInput) {
+                        nameInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') window.submitSignup();
+                        });
+                    }
                 }
             }, 100);
         };
@@ -950,16 +1197,55 @@
         window.initializeGame = initializeGame;
         window.handleCardClick = handleCardClick;
         window.goToPage = goToPage;
-        window.signInWithGoogle = signInWithGoogle;
         window.signOutUser = signOutUser;
         window.selectAvatar = (avatar) => {
             playerAvatar = avatar;
             render();
         };
-        window.startGameWithName = () => {
+
+        // Welcome 모드 전환
+        window.switchMode = (mode) => {
+            welcomeMode = mode;
+            render();
+        };
+
+        // 게스트로 시작
+        window.startGameAsGuest = () => {
             const input = document.getElementById('playerNameInput');
             const name = input?.value.trim() || '익명';
             setPlayerName(name);
+        };
+
+        // 회원가입
+        window.submitSignup = () => {
+            const email = document.getElementById('emailInput')?.value.trim();
+            const password = document.getElementById('passwordInput')?.value;
+            const name = document.getElementById('nameInput')?.value.trim();
+
+            if (!email || !password || !name) {
+                alert('모든 항목을 입력해주세요.');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+            }
+
+            signup(email, password, name, playerAvatar);
+        };
+
+        // 로그인
+        window.submitLogin = () => {
+            const email = document.getElementById('emailInput')?.value.trim();
+            const password = document.getElementById('passwordInput')?.value;
+
+            if (!email || !password) {
+                alert('이메일과 비밀번호를 입력해주세요.');
+                return;
+            }
+
+            login(email, password);
         };
 
         // 시작
