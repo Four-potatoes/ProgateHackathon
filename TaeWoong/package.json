@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node -r dotenv/config server.js",
-    "dev": "nodemon -r dotenv/config server.js"
+    "dev": "nodemon -r dotenv/config server.js",
+    "client-dev": "cd client && npm start"
   },
   "keywords": [
     "game",
@@ -26,9 +27,14 @@
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.6.5",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "react-router-dom": "^7.9.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/react-router-dom": "^5.3.3",
+    "autoprefixer": "^10.4.21",
+    "nodemon": "^3.0.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.16"
   }
 }
