@@ -79,6 +79,8 @@
         let won = false;
         let clickable = true;
         let unlockedCards = new Set(); // 잠금 해제된 카드 이름들
+        let playerName = ''; // 플레이어 이름
+        let gameStarted = false; // 게임 시작 여부
         
         // UI 상태
         let page = 'game';
@@ -176,6 +178,7 @@
             try {
                 await addDoc(collection(db, path), {
                     uid: userId,
+                    name: playerName || '익명',
                     moves: score,
                     time: serverTimestamp(),
                 });
@@ -191,7 +194,7 @@
                 collection(db, path),
                 orderBy("moves", "asc"),
                 orderBy("time", "asc"),
-                limit(10)
+                limit(20)
             );
 
             onSnapshot(q, (snapshot) => {
@@ -323,6 +326,51 @@
         // ============================================
         // 렌더링 - 컴포넌트
         // ============================================
+        const renderMain = () => {
+            root.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-indigo-100 p-4">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                        <div class="mb-6">
+                            <div class="text-6xl mb-4">🎮</div>
+                            <h1 class="text-4xl font-extrabold text-indigo-600 mb-2">
+                                K-Culture<br>Memory Master
+                            </h1>
+                            <p class="text-gray-600">한국 문화 카드 맞추기 게임</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-left text-sm font-semibold text-gray-700 mb-2">
+                                이름을 입력해주세요
+                            </label>
+                            <input
+                                type="text"
+                                id="player-name"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                placeholder="예: 홍길동"
+                                maxlength="10"
+                            />
+                        </div>
+                        
+                        <button 
+                            onclick="startGameWithName()"
+                            class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition transform hover:scale-105"
+                        >
+                            게임 시작하기
+                        </button>
+                        
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <p class="text-sm text-gray-600 mb-3">📚 게임 방법</p>
+                            <div class="text-xs text-gray-500 space-y-1">
+                                <p>• 같은 K-Culture 카드를 찾아 맞추세요</p>
+                                <p>• 모든 카드를 맞추면 도감에 저장됩니다</p>
+                                <p>• AI 학습으로 더 자세히 공부할 수 있어요</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
         const NavBtn = (label, target) => `
             <button 
                 onclick="navigate('${target}')"
@@ -364,6 +412,7 @@
                 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-white p-8 rounded-2xl shadow-2xl text-center pop-in">
                         <h2 class="text-3xl font-extrabold text-green-600 mb-4">🎉 축하합니다! 🎉</h2>
+                        <p class="text-lg text-gray-700 mb-2"><strong>${playerName || '플레이어'}</strong>님!</p>
                         <p class="text-lg text-gray-700 mb-6"><strong>${moves}번</strong> 만에 모든 카드를 맞췄습니다!</p>
                         <div class="flex gap-3 justify-center">
                             <button 
@@ -385,7 +434,13 @@
 
             root.innerHTML = `
                 <div class="p-4 flex flex-col items-center min-h-screen bg-pink-50">
-                    <h1 class="text-4xl font-extrabold text-indigo-600 my-4">K-Culture Memory Master</h1>
+                    <div class="w-full max-w-xl flex justify-between items-center mb-4">
+                        <h1 class="text-3xl font-extrabold text-indigo-600">K-Culture Memory</h1>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">플레이어</p>
+                            <p class="text-lg font-bold text-indigo-600">${playerName || '익명'}</p>
+                        </div>
+                    </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xl mb-6">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
@@ -628,34 +683,63 @@
         const renderRanking = (data, loading) => {
             let content = '';
             if (loading) {
-                content = '<div class="p-4 text-center text-gray-600">로딩 중...</div>';
+                content = '<div class="p-4 text-center text-gray-600"><svg data-lucide="loader-2" class="animate-spin inline w-6 h-6 mr-2"></svg>로딩 중...</div>';
             } else if (data.length === 0) {
                 content = '<p class="text-center text-gray-500 p-4">아직 기록이 없습니다!</p>';
             } else {
-                content = data.map((r, i) => `
-                    <div class="flex justify-between items-center p-3 rounded-lg ${r.uid === userId ? 'bg-yellow-100 font-bold border-2 border-yellow-400' : 'bg-gray-50'}">
-                        <span class="text-xl font-bold ${i === 0 ? 'text-yellow-600' : 'text-gray-700'}">${i + 1}.</span>
-                        <span class="flex-1 ml-4 truncate text-sm">
-                            ${r.uid === userId ? '나 (You)' : `ID: ${r.uid.slice(0, 8)}...`}
-                        </span>
-                        <span class="text-lg font-mono text-indigo-600">${r.moves}</span>
-                    </div>
-                `).join('');
+                // 시도 횟수가 적은 순으로 정렬 (이미 정렬되어 있지만 확실하게)
+                const sortedData = [...data].sort((a, b) => {
+                    if (a.moves === b.moves) {
+                        return new Date(a.time) - new Date(b.time);
+                    }
+                    return a.moves - b.moves;
+                });
+
+                content = sortedData.map((r, i) => {
+                    const isMe = r.uid === userId;
+                    const medalEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                    
+                    return `
+                        <div class="flex justify-between items-center p-3 rounded-lg transition ${isMe ? 'bg-yellow-100 font-bold border-2 border-yellow-400 shadow-md' : 'bg-gray-50 hover:bg-gray-100'}">
+                            <span class="text-xl font-bold ${i < 3 ? 'text-yellow-600' : 'text-gray-700'} w-12">
+                                ${medalEmoji || `${i + 1}.`}
+                            </span>
+                            <span class="flex-1 ml-2 text-sm truncate">
+                                <span class="${isMe ? 'text-indigo-700' : 'text-gray-800'}">${r.name || '익명'}</span>
+                                ${isMe ? ' <span class="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full">나</span>' : ''}
+                            </span>
+                            <span class="text-lg font-mono ${isMe ? 'text-indigo-600' : 'text-gray-600'} font-bold">
+                                ${r.moves}회
+                            </span>
+                        </div>
+                    `;
+                }).join('');
             }
 
             root.innerHTML = `
                 <div class="p-6 min-h-screen bg-purple-50">
-                    <h1 class="text-3xl font-bold text-purple-700 mb-6 text-center">🏆 랭킹</h1>
+                    <h1 class="text-3xl font-bold text-purple-700 mb-2 text-center">🏆 명예의 전당</h1>
+                    <p class="text-center text-gray-600 mb-6">최소 시도 횟수로 클리어한 랭킹</p>
                     
-                    <div class="p-4 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
-                        <h2 class="text-2xl font-bold mb-4 text-center text-indigo-700 border-b pb-2">최고 기록</h2>
-                        <div class="space-y-2">${content}</div>
+                    <div class="p-6 bg-white rounded-xl shadow-lg w-full max-w-lg mx-auto">
+                        <h2 class="text-xl font-bold mb-4 text-center text-indigo-700 border-b pb-2 flex items-center justify-center gap-2">
+                            <svg data-lucide="trophy" class="w-5 h-5"></svg>
+                            TOP 20
+                        </h2>
+                        <div class="space-y-2 max-h-96 overflow-y-auto">${content}</div>
+                        
+                        ${playerName ? `
+                            <div class="mt-4 pt-4 border-t border-gray-200 text-center">
+                                <p class="text-xs text-gray-500">현재 플레이어: <span class="font-bold text-indigo-600">${playerName}</span></p>
+                            </div>
+                        ` : ''}
                     </div>
                     
                     <button 
                         onclick="navigate('game')"
-                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto"
+                        class="mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center mx-auto gap-2"
                     >
+                        <svg data-lucide="game-controller" class="w-5 h-5"></svg>
                         게임으로
                     </button>
                 </div>
@@ -664,6 +748,12 @@
 
         const render = () => {
             if (!isReady) return;
+
+            // 게임 시작 전이면 메인 화면 표시
+            if (!gameStarted) {
+                renderMain();
+                return;
+            }
 
             switch (page) {
                 case 'game': renderGame(); break;
@@ -704,8 +794,8 @@
             onAuthStateChanged(auth, (user) => {
                 userId = user ? user.uid : crypto.randomUUID();
                 isReady = true;
-                startGame();
-                render();
+                createDummyRankings(); // 더미 랭킹 데이터 생성
+                render(); // 메인 화면 렌더링
             });
 
             try {
@@ -725,6 +815,13 @@
         window.navigate = navigate;
         window.makeQuiz = makeQuiz;
         window.submitAnswer = submitAnswer;
+        window.startGameWithName = () => {
+            const input = document.getElementById('player-name');
+            playerName = input?.value.trim() || '익명';
+            gameStarted = true;
+            startGame();
+            render();
+        };
         window.selectCard = (index) => {
             selectedCard = ITEMS[index];
             renderCards();
