@@ -145,7 +145,7 @@ header {
 }
 .visual {
     width: 100%;
-    height: 900px;
+    height: 850px;
     display: flex;
     justify-content: center;
     position: relative;
@@ -194,8 +194,9 @@ header {
 }
 .line {
     width: 30%;
-    height: 2px;
+    height: 5px;
     background: #fff;
+    border-radius: 10px;
 }
 .visual > .visualText > h1 {
     font-size: 60px;
@@ -217,24 +218,47 @@ header {
     flex-direction: column;
     align-items: center;
     border-radius: 10px;
-
 }
-.visual > h3 {
-    animation: iconscale .4s infinite;
-    position: absolute;
+.scrollText > h3 {
+    animation: updown 3s infinite;
 }
-@keyframes iconscale {
+@keyframes updown {
     0% {
-        transform: scale(1);
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(10px);
     }
     100% {
-        transform: scale(2);
+        transform: translateY(0);
     }
 }
 .scrollText > div {
     width: 5px;
     height: 50px;
+    background: #aaa;
+    position: relative;
+}
+.scrollText > div::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 40%;
+    top: 0;
+    left: 0;
     background: #fff;
+    animation: sc 3s infinite;
+}
+@keyframes sc {
+    0% {
+        top: 0;
+    }
+    50% {
+        top: 100%;
+    }
+    100% {
+        top: 0;
+    }
 }
 .partIntroContainer {
   position: relative;
@@ -248,16 +272,16 @@ header {
   opacity: 0;
   transition: opacity 0.4s ease;
   text-align: center;
+  /* height: 150vh; */
+  width: 100%;
 }
 .partIntroContainer h1 {
   font-size: 3rem;
   line-height: 1.4;
+  width: 100%;
+  height: 100%;
 }
-.intro1 {
-    width: 100%;
-    position: relative;
-}
-.intro1Img1 {
+/* .intro1Img1 {
     width: 300px;
     position: absolute;
     left: 15%;
@@ -270,7 +294,7 @@ header {
     bottom: 10%;
     right: 15%;
     transform: rotate(30deg);
-}
+} */
 @media (max-width: 480px) {
     :root {
         --containerSize: 400px;
