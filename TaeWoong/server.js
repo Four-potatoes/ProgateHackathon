@@ -3,7 +3,6 @@ const cors = require('cors');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const cookieParser = require('cookie-parser');
-const passport = require('passport');
 const path = require('path');
 require('dotenv').config();
 
@@ -57,10 +56,6 @@ app.use(session({
         sameSite: 'lax'
     }
 }));
-
-// Passport 초기화
-app.use(passport.initialize());
-app.use(passport.session());
 
 // ===================================
 // 라우트

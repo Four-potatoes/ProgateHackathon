@@ -8,7 +8,10 @@
       "Bash(start https://console.cloud.google.com/apis/library/people.googleapis.com)",
       "Bash(git add:*)",
       "Bash(start https://github.com/Four-potatoes/ProgateHackathon/security/secret-scanning/unblock-secret/34sELNQfO9Ydm6lH1gHgYWCZL6Q)",
-      "Bash(start https://github.com/Four-potatoes/ProgateHackathon/security/secret-scanning/unblock-secret/34sELQFx8oQpv5UpcSKlcgqPI2k)"
+      "Bash(start https://github.com/Four-potatoes/ProgateHackathon/security/secret-scanning/unblock-secret/34sELQFx8oQpv5UpcSKlcgqPI2k)",
+      "Bash(cat:*)",
+      "Bash(start https://console.cloud.google.com/projectcreate)",
+      "Bash(start https://console.cloud.google.com/apis/credentials)"
     ],
     "deny": [],
     "ask": []
