@@ -98,6 +98,63 @@
         .profile-image:hover {
             transform: scale(1.1);
         }
+
+        /* 컬렉션 상세 모달 */
+        .collection-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .collection-modal-card {
+            position: relative;
+            width: 90vw;
+            max-width: 400px;
+            aspect-ratio: 0.7;
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            transform-style: preserve-3d;
+            transform: scale(0.5) rotateY(0deg);
+        }
+        .collection-modal-card.is-visible {
+            transform: scale(1) rotateY(0deg);
+        }
+        .collection-modal-card.is-flipped {
+            transform: scale(1.2) rotateY(180deg);
+        }
+        .collection-card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .collection-card-front {
+            background: white;
+            cursor: pointer;
+        }
+        .collection-card-back {
+            background-color: #1f2937; /* bg-gray-800 */
+            color: white;
+            transform: rotateY(180deg);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* 모달 배경 */
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
@@ -122,7 +179,29 @@
         let playerNameSet = false;
         let playerAvatar = '😊'; // 플레이어 아바타
 
-        // Google 사용자 정보
+        // 코인 & 프로필 시스템
+        let coins = 0;
+        let viewedCollections = new Set(); // 본 컬렉션 (코인 획득)
+        let purchasedAvatars = new Set(['😊']); // 구매한 아바타 (기본 포함)
+
+        // 프로필 아바타 상점
+        const AVATAR_SHOP = [
+            { id: '😊', name: '기본', price: 0, category: 'free' },
+            { id: '😎', name: '멋짐', price: 10, category: 'basic' },
+            { id: '🥳', name: '파티', price: 10, category: 'basic' },
+            { id: '🤓', name: '똑똑', price: 10, category: 'basic' },
+            { id: '😇', name: '천사', price: 15, category: 'basic' },
+            { id: '🤗', name: '포옹', price: 15, category: 'basic' },
+            { id: '🥰', name: '사랑', price: 15, category: 'basic' },
+            { id: '👑', name: '왕관', price: 50, category: 'premium' },
+            { id: '🦄', name: '유니콘', price: 50, category: 'premium' },
+            { id: '🐉', name: '드래곤', price: 50, category: 'premium' },
+            { id: '💎', name: '다이아', price: 100, category: 'legendary' },
+            { id: '🏆', name: '트로피', price: 100, category: 'legendary' },
+            { id: '🚀', name: '로켓', price: 100, category: 'legendary' }
+        ];
+
+        // 사용자 정보
         let currentUser = null;
         let userProfile = {
             uid: null,
@@ -138,7 +217,15 @@
         let moves = 0;
         let isWon = false;
         let canClick = true;
-        let currentPage = 'welcome'; // welcome, stages, game, collection, ranking
+        let currentPage = 'welcome'; // welcome, stages, game, collection, ranking, shop, quiz
+        let selectedCollectionItem = null; // 선택된 컬렉션 아이템 (상세보기)
+
+        // AI 퀴즈 상태
+        let quizState = {
+            conversation: [], // { role: 'ai' | 'user', content: '...', options: [...] }
+            loading: false,
+            currentQuestion: null // { question: '...', options: [...], answer: '...', questionContext: {...} }
+        };
 
         // 랭킹 데이터 (메모리)
         let rankingData = [
@@ -154,49 +241,11 @@
         // ===================================
         async function loadData() {
             try {
-                // URL에서 토큰 확인 (Google OAuth 콜백)
-                const urlParams = new URLSearchParams(window.location.search);
-                const tokenFromUrl = urlParams.get('token');
-
-                if (tokenFromUrl) {
-                    authToken = tokenFromUrl;
-                    localStorage.setItem('auth_token', authToken);
-                    // URL에서 토큰 제거
-                    window.history.replaceState({}, document.title, '/game');
-
-                    // 백엔드에서 사용자 정보 가져오기
-                    try {
-                        const userData = await apiCall('/auth/me');
-                        currentUser = userData.user;
-                        userProfile = {
-                            uid: currentUser.id,
-                            email: currentUser.email,
-                            displayName: currentUser.name,
-                            photoURL: currentUser.profilePicture
-                        };
-                        playerName = currentUser.name;
-                        playerNameSet = true;
-
-                        // 게임 진행도 로드
-                        if (userData.progress) {
-                            unlockedStages = JSON.parse(userData.progress.unlocked_stages) || [1];
-                            completedStages = JSON.parse(userData.progress.completed_stages) || [];
-                            currentStage = userData.progress.current_stage || 1;
-                            playerAvatar = userData.progress.player_avatar || '😊';
-                        }
-
-                        console.log('Google 로그인 성공:', playerName);
-                        currentPage = 'stages'; // 로그인 후 스테이지 선택 화면으로
-                    } catch (error) {
-                        console.error('사용자 정보 로드 실패:', error);
-                    }
-                }
-
                 const response = await fetch('../data/stages.json');
                 STAGES_DATA = await response.json();
 
                 // 토큰이 있으면 백엔드에서 데이터 로드
-                if (authToken && !tokenFromUrl) {
+                if (authToken) {
                     try {
                         const userData = await apiCall('/auth/me');
                         currentUser = userData.user;
@@ -237,6 +286,9 @@
                 currentStage = progress.currentStage || 1;
                 playerName = progress.playerName || '';
                 playerNameSet = progress.playerNameSet || false;
+                coins = progress.coins || 0;
+                viewedCollections = new Set(progress.viewedCollections || []);
+                purchasedAvatars = new Set(progress.purchasedAvatars || ['😊']);
             }
         }
 
@@ -250,10 +302,13 @@
                 completedStages,
                 currentStage,
                 playerName,
-                playerNameSet
+                playerNameSet,
+                coins,
+                viewedCollections: Array.from(viewedCollections),
+                purchasedAvatars: Array.from(purchasedAvatars)
             }));
 
-            // Google 로그인 상태면 백엔드 DB에도 저장
+            // 로그인 상태면 백엔드 DB에도 저장
             if (authToken && currentUser) {
                 saveUserData();
             }
@@ -397,6 +452,9 @@
 
         const goToPage = (page) => {
             currentPage = page;
+            if (page === 'quiz') {
+                startQuiz();
+            }
             render();
         };
 
@@ -404,8 +462,7 @@
             playerName = name.trim() || '익명';
             playerNameSet = true;
 
-            // 간단 로그인은 로컬 저장소만 사용 (1회용)
-            console.log('1회용 로그인:', playerName, '(Google 로그인하면 영구 저장됩니다)');
+            console.log('게스트 모드로 시작:', playerName);
 
             saveProgress();
             goToPage('stages');
@@ -497,29 +554,115 @@
         };
 
         // ===================================
+        // AI 퀴즈 로직
+        // ===================================
+        const startQuiz = async () => {
+            // 로그인 상태 확인
+            if (!authToken) {
+                quizState.conversation = [{
+                    role: 'ai',
+                    content: '코인 채굴 퀴즈는 로그인한 사용자만 이용할 수 있습니다. 로그인 후 다시 시도해주세요.'
+                }];
+                quizState.loading = false;
+                render();
+                return;
+            }
+
+            quizState.loading = true;
+            quizState.conversation = [];
+            render();
+
+            try {
+                const unlockedCards = STAGES_DATA.stages
+                    .filter(stage => completedStages.includes(stage.id))
+                    .flatMap(stage => stage.items.map(item => ({ ...item, stageName: stage.name })));
+
+                if (unlockedCards.length === 0) {
+                    quizState.conversation.push({
+                        role: 'ai',
+                        content: '퀴즈를 만들려면 먼저 스테이지를 하나 이상 클리어해야 합니다.'
+                    });
+                    quizState.loading = false;
+                    render();
+                    return;
+                }
+
+                const { question, options, answer, questionContext } = await apiCall('/ai/quiz', {
+                    method: 'POST',
+                    body: JSON.stringify({ unlockedCards })
+                });
+
+                quizState.currentQuestion = { question, options, answer, questionContext };
+                quizState.conversation.push({ role: 'ai', content: question, options: options });
+            } catch (error) {
+                quizState.conversation.push({ role: 'ai', content: `오류: ${error.message}` });
+            } finally {
+                quizState.loading = false;
+                render();
+            }
+        };
+
+        const sendAnswer = async () => {
+            const answerInput = document.getElementById('answerInput');
+            const answer = answerInput.value.trim();
+
+            if (!answer || quizState.loading) return;
+
+            quizState.loading = true;
+            quizState.conversation.push({ role: 'user', content: answer });
+            answerInput.value = '';
+            render();
+
+            try {
+                const { isCorrect, reward, explanation } = await apiCall('/ai/answer', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        answer,
+                        question: quizState.currentQuestion.question,
+                        options: quizState.currentQuestion.options,
+                        correctAnswer: quizState.currentQuestion.answer,
+                        questionContext: quizState.currentQuestion.questionContext
+                    })
+                });
+
+                quizState.conversation.push({ role: 'ai', content: explanation });
+
+                if (isCorrect) {
+                    coins += reward;
+                    saveProgress();
+                    quizState.conversation.push({ role: 'ai', content: `🎉 정답입니다! ${reward} 코인을 획득했습니다. 잠시 후 새로운 질문을 보내드립니다.` });
+                    render();
+                    setTimeout(startQuiz, 3000); // 3초 후 새 퀴즈 시작
+                    return;
+                } else {
+                    quizState.conversation.push({ role: 'ai', content: '다음 질문을 원하시면 \'다음\'이라고 입력해주세요.' });
+                }
+
+            } catch (error) {
+                quizState.conversation.push({ role: 'ai', content: `오류: ${error.message}` });
+            } finally {
+                quizState.loading = false;
+                render();
+            }
+        };
+
+        // ===================================
         // 렌더링 함수
         // ===================================
         const renderHeader = () => {
+            const coinDisplay = `
+                <div class="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-yellow-100 border-2 border-yellow-400 rounded-full shadow-lg">
+                    <span class="text-2xl">🪙</span>
+                    <span class="font-bold text-yellow-900">${coins}</span>
+                </div>
+            `;
+
             if (!currentUser) {
-                return `
-                    <div class="fixed top-4 right-4 z-50">
-                        <button
-                            onclick="window.signInWithGoogle()"
-                            class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
-                                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-                                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-                                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-                                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-                            </svg>
-                            <span class="font-bold text-gray-700">Google 로그인</span>
-                        </button>
-                    </div>
-                `;
+                return coinDisplay;
             }
 
             return `
+                ${coinDisplay}
                 <div class="fixed top-4 right-4 z-50">
                     <div class="relative">
                         <img
@@ -864,20 +1007,17 @@
                 `;
             }).join('');
 
-            // Google 로그인 안내 (로그인하지 않은 경우)
-            const googleLoginAlert = !currentUser ? `
+            // 로그인 안내 (로그인하지 않은 경우)
+            const loginAlert = !currentUser ? `
                 <div class="max-w-3xl mx-auto mb-8">
                     <div class="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
                         <div class="flex items-start gap-4">
                             <div class="text-4xl">✅</div>
                             <div class="flex-1">
-                                <h3 class="text-lg font-bold text-green-900 mb-2">로컬 저장소 모드로 플레이 중</h3>
+                                <h3 class="text-lg font-bold text-green-900 mb-2">게스트 모드로 플레이 중</h3>
                                 <p class="text-sm text-green-700 mb-2">
-                                    현재 브라우저에 게임 기록이 저장됩니다.<br>
-                                    이대로 플레이해도 완벽하게 작동합니다!
-                                </p>
-                                <p class="text-xs text-gray-600 italic">
-                                    💡 팁: Google 로그인은 개발자가 Firebase를 설정하면 사용할 수 있어요.
+                                    현재 브라우저에 게임 기록이 임시 저장됩니다.<br>
+                                    회원가입 또는 로그인하면 데이터를 영구적으로 저장할 수 있습니다.
                                 </p>
                             </div>
                         </div>
@@ -898,18 +1038,30 @@
                             <p class="text-lg text-gray-500">한국 문화재부터 음식, 영화까지 단계별로 도전해보세요</p>
                         </div>
 
-                        ${googleLoginAlert}
+                        ${loginAlert}
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                             ${stagesHtml}
                         </div>
 
-                        <div class="flex justify-center gap-4">
+                        <div class="flex justify-center gap-4 flex-wrap">
                             <button
                                 onclick="window.goToPage('collection')"
                                 class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-300"
                             >
                                 내 컬렉션 보기
+                            </button>
+                            <button
+                                onclick="window.goToPage('quiz')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 transition-all duration-300"
+                            >
+                                🪙 코인 채굴하기 (AI 퀴즈)
+                            </button>
+                            <button
+                                onclick="window.goToPage('shop')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                🛒 프로필 상점
                             </button>
                             <button
                                 onclick="window.goToPage('ranking')"
@@ -1042,22 +1194,48 @@
                     ...item,
                     stageName: stage.name,
                     stageId: stage.id,
-                    isUnlocked: completedStages.includes(stage.id) // 완료해야만 해제
+                    isUnlocked: completedStages.includes(stage.id)
                 }))
             );
 
             const itemsHtml = allItems.map(item => `
-                <div class="${item.isUnlocked ? '' : 'locked'} bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div
+                    class="${item.isUnlocked ? 'cursor-pointer' : 'locked'} bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    ${item.isUnlocked ? `onclick="window.showCollectionDetail(${item.stageId}, ${item.idx})"` : ''}
+                >
                     <div class="aspect-square overflow-hidden">
                         <img src="../assets/img/${item.img}" alt="${item.title}" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4 text-center">
                         <h3 class="font-bold text-lg text-gray-800 mb-1">${item.title}</h3>
                         <p class="text-sm text-gray-600 mb-2">${item.stageName}</p>
-                        <p class="text-xs text-gray-500">${item.isUnlocked ? item.desc : '스테이지를 클리어하세요'}</p>
+                        <p class="text-xs font-bold ${item.isUnlocked ? 'text-indigo-500' : 'text-gray-500'}">
+                            ${item.isUnlocked ? '상세보기' : '스테이지 클리어 필요'}
+                        </p>
                     </div>
                 </div>
             `).join('');
+
+            let detailModal = '';
+            if (selectedCollectionItem) {
+                detailModal = `
+                    <div class="collection-modal-backdrop" onclick="window.hideCollectionDetail()">
+                        <div id="collectionModalCard" class="collection-modal-card" onclick="event.stopPropagation()">
+                            <!-- 앞면 -->
+                            <div class="collection-card-face collection-card-front" onclick="document.getElementById('collectionModalCard').classList.toggle('is-flipped')">
+                                <img src="../assets/img/${selectedCollectionItem.img}" alt="${selectedCollectionItem.title}" class="w-full h-full object-cover">
+                            </div>
+                            <!-- 뒷면 -->
+                            <div class="collection-card-face collection-card-back" onclick="document.getElementById('collectionModalCard').classList.toggle('is-flipped')">
+                                <button onclick="window.hideCollectionDetail()" class="absolute top-4 right-4 text-3xl font-bold text-white/80 hover:text-white transition-colors">&times;</button>
+                                <h3 class="text-3xl font-bold mb-3">${selectedCollectionItem.title}</h3>
+                                <p class="text-lg text-purple-300 mb-4">${selectedCollectionItem.stageName}</p>
+                                <p class="text-base text-gray-300">${selectedCollectionItem.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
 
             appContainer.innerHTML = `
                 ${renderHeader()}
@@ -1065,10 +1243,10 @@
                     <div class="max-w-7xl mx-auto">
                         <div class="text-center mb-8">
                             <h1 class="text-4xl font-bold text-gray-800 mb-4">내 컬렉션</h1>
-                            <p class="text-lg text-gray-600">스테이지를 클리어하면 해당 항목이 잠금 해제됩니다</p>
+                            <p class="text-lg text-gray-600">스테이지를 클리어하여 잠금 해제된 카드를 눌러 상세 정보를 확인하세요.</p>
                         </div>
 
-                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
                             ${itemsHtml}
                         </div>
 
@@ -1082,7 +1260,19 @@
                         </div>
                     </div>
                 </div>
+                ${detailModal}
             `;
+
+            if (selectedCollectionItem) {
+                // 애니메이션 트리거
+                setTimeout(() => {
+                    const card = document.getElementById('collectionModalCard');
+                    if (card) {
+                        card.classList.add('is-visible');
+                        setTimeout(() => card.classList.add('is-flipped'), 100); // 확대 후 뒤집기
+                    }
+                }, 50);
+            }
         };
 
         const renderRanking = () => {
@@ -1129,10 +1319,180 @@
             `;
         };
 
+        const renderShop = () => {
+            const shopItemsHtml = AVATAR_SHOP.map(avatar => {
+                const isOwned = purchasedAvatars.has(avatar.id);
+                const canAfford = coins >= avatar.price;
+
+                let buttonHtml = '';
+                if (isOwned) {
+                    buttonHtml = `
+                        <button class="w-full py-2 px-4 text-sm rounded-lg font-bold text-green-700 bg-green-100 cursor-default">
+                            보유 중
+                        </button>
+                    `;
+                } else if (canAfford) {
+                    buttonHtml = `
+                        <button
+                            onclick="window.purchaseAvatar('${avatar.id}')"
+                            class="w-full py-2 px-4 text-sm rounded-lg font-bold text-white bg-indigo-500 hover:bg-indigo-600 transition-colors"
+                        >
+                            구매하기
+                        </button>
+                    `;
+                } else {
+                    buttonHtml = `
+                        <button class="w-full py-2 px-4 text-sm rounded-lg font-bold text-gray-500 bg-gray-200 cursor-not-allowed" disabled>
+                            코인 부족
+                        </button>
+                    `;
+                }
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-lg p-4 text-center flex flex-col justify-between">
+                        <div>
+                            <div class="text-6xl mb-2">${avatar.id}</div>
+                            <p class="font-bold text-gray-800">${avatar.name}</p>
+                            <div class="flex items-center justify-center gap-1 my-2">
+                                <span class="text-lg">🪙</span>
+                                <span class="font-bold text-yellow-900">${avatar.price}</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <div class="min-h-screen p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-800 mb-4">🛒 프로필 상점</h1>
+                            <p class="text-lg text-gray-600">코인을 모아 새로운 프로필 아바타를 구매하세요!</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
+                            ${shopItemsHtml}
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderQuizPage = () => {
+            const conversationHtml = quizState.conversation.map(msg => {
+                let optionsHtml = '';
+                if (msg.options && msg.options.length > 0) {
+                    optionsHtml = `
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            ${msg.options.map(option => `
+                                <button
+                                    onclick="document.getElementById('answerInput').value = '${option}';"
+                                    class="px-4 py-2 bg-indigo-200 text-indigo-800 rounded-full text-sm font-medium hover:bg-indigo-300 transition-colors"
+                                >
+                                    ${option}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                if (msg.role === 'ai') {
+                    return `
+                        <div class="flex justify-start mb-4">
+                            <div class="bg-indigo-100 text-indigo-800 p-3 rounded-lg max-w-xs">
+                                ${msg.content}
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="flex justify-end mb-4">
+                            <div class="bg-green-100 text-green-800 p-3 rounded-lg max-w-xs">
+                                ${msg.content}
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <div class="min-h-screen p-8">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-800 mb-4">🤖 AI 코인 채굴 퀴즈</h1>
+                            <p class="text-lg text-gray-600">AI가 내는 문제를 맞히고 코인을 획득하세요!</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                            <div id="chat-container" class="h-96 overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg">
+                                ${conversationHtml}
+                                ${quizState.loading ? '<p class="text-gray-500">AI가 생각 중...</p>' : ''}
+                            </div>
+                            <div class="flex gap-2">
+                                <input
+                                    type="text"
+                                    id="answerInput"
+                                    class="flex-1 p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                                    placeholder="답변을 입력하세요..."
+                                    ${quizState.loading ? 'disabled' : ''}
+                                />
+                                <button
+                                    id="sendAnswerBtn"
+                                    class="py-3 px-6 rounded-lg font-bold text-white bg-indigo-500 hover:bg-indigo-600 transition-colors disabled:bg-gray-400"
+                                    ${quizState.loading ? 'disabled' : ''}
+                                >
+                                    전송
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button
+                                onclick="window.goToPage('stages')"
+                                class="py-3 px-8 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+                            >
+                                스테이지 선택
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const chatContainer = document.getElementById('chat-container');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            const sendBtn = document.getElementById('sendAnswerBtn');
+            const answerInput = document.getElementById('answerInput');
+            if (sendBtn && answerInput) {
+                sendBtn.addEventListener('click', sendAnswer);
+                answerInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendAnswer();
+                });
+            }
+        };
+
         // ===================================
         // 마스터 렌더 함수
         // ===================================
         const render = () => {
+            const scrollY = window.scrollY;
             switch (currentPage) {
                 case 'welcome':
                     renderWelcome();
@@ -1143,15 +1503,22 @@
                 case 'game':
                     renderGame();
                     break;
+                case 'shop':
+                    renderShop();
+                    break;
                 case 'collection':
                     renderCollection();
                     break;
                 case 'ranking':
                     renderRanking();
                     break;
+                case 'quiz':
+                    renderQuizPage();
+                    break;
                 default:
                     appContainer.innerHTML = '<h1 class="text-center text-red-500 mt-10">페이지 오류</h1>';
             }
+            window.scrollTo(0, scrollY);
         };
 
         // ===================================
@@ -1159,36 +1526,7 @@
         // ===================================
         async function init() {
             await loadData();
-
-            // Firebase 인증 상태 감지 (Firebase가 초기화된 경우에만)
-            if (window.firebaseInitialized && window.firebaseAuth) {
-                window.onAuthStateChanged(window.firebaseAuth, async (user) => {
-                    if (user) {
-                        currentUser = user;
-                        userProfile = {
-                            uid: user.uid,
-                            email: user.email,
-                            displayName: user.displayName,
-                            photoURL: user.photoURL
-                        };
-
-                        // Firestore에서 사용자 데이터 로드
-                        await loadUserData();
-                    } else {
-                        currentUser = null;
-                        userProfile = {
-                            uid: null,
-                            email: null,
-                            displayName: null,
-                            photoURL: null
-                        };
-                    }
-
-                    render();
-                });
-            }
-
-            // 항상 Welcome 페이지부터 시작 (간단 로그인)
+            // 항상 Welcome 페이지부터 시작
             currentPage = 'welcome';
             render();
         }
@@ -1201,6 +1539,46 @@
         window.selectAvatar = (avatar) => {
             playerAvatar = avatar;
             render();
+        };
+
+        window.purchaseAvatar = (avatarId) => {
+            const avatar = AVATAR_SHOP.find(a => a.id === avatarId);
+            if (!avatar) return;
+
+            if (coins >= avatar.price && !purchasedAvatars.has(avatar.id)) {
+                coins -= avatar.price;
+                purchasedAvatars.add(avatar.id);
+                saveProgress();
+                render(); // Re-render the shop to update the UI
+            } else {
+                alert('코인이 부족하거나 이미 보유한 아바타입니다.');
+            }
+        };
+
+        window.showCollectionDetail = (stageId, itemId) => {
+            const stage = STAGES_DATA.stages.find(s => s.id === stageId);
+            if (!stage || !completedStages.includes(stageId)) return;
+
+            const item = stage.items.find(i => i.idx === itemId);
+            if (item) {
+                selectedCollectionItem = { ...item, stageName: stage.name };
+                render();
+            }
+        };
+
+        window.hideCollectionDetail = () => {
+            const card = document.getElementById('collectionModalCard');
+            if (card) {
+                card.classList.remove('is-visible');
+                card.classList.remove('is-flipped');
+                setTimeout(() => {
+                    selectedCollectionItem = null;
+                    render();
+                }, 400); // transition 시간과 맞춤
+            } else {
+                selectedCollectionItem = null;
+                render();
+            }
         };
 
         // Welcome 모드 전환

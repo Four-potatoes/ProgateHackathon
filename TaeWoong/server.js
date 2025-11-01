@@ -4,11 +4,10 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const cookieParser = require('cookie-parser');
 const path = require('path');
-require('dotenv').config();
-
 const { pool } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const gameRoutes = require('./routes/game');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -94,6 +93,7 @@ app.get('/health', (req, res) => {
 // API 라우트
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 핸들러
 app.use((req, res) => {
