@@ -21,7 +21,7 @@ router.post('/quiz', authenticateToken, async (req, res) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro"});
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"}); // Gemini 2.5 Flash (최신 안정 버전)
 
         // 퀴즈 질문 생성 프롬프트
         const prompt = `
@@ -95,7 +95,7 @@ router.post('/answer', authenticateToken, async (req, res) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"}); // Gemini 2.5 Flash (최신 안정 버전)
 
         // 답변 채점 프롬프트
         const prompt = `
