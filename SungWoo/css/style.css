@@ -264,7 +264,7 @@ header {
 .partIntroContainer {
   position: relative;
   height: 600vh;
-  background: url(/assets/img/introBg2.jpg) no-repeat center center;
+  background: url(../assets/img/introBg2.jpg) no-repeat center center;
   background-size: cover; /* 전체 영역에 맞게 이미지 늘리기 */
   background-attachment: fixed; /* 스크롤 시 배경 고정 */
   color: #fff;
