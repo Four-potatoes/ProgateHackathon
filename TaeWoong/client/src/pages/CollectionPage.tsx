@@ -105,9 +105,12 @@ const CollectionPage: React.FC = () => {
               >
                 <div className="aspect-square overflow-hidden flex items-center justify-center bg-[#e0e7eb]">
                   <img
-                    src={`/img/${item.folder}/${item.img}`}
+                    src={`/img/${item.folder}/${encodeURIComponent(item.img)}`}
                     alt={item.title}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error(`이미지 로드 실패: /img/${item.folder}/${item.img}`);
+                    }}
                   />
                 </div>
                 <div className="p-3 text-center bg-white">
@@ -137,7 +140,7 @@ const CollectionPage: React.FC = () => {
             {/* 카드 */}
             <div
               className={`
-                w-full aspect-[3/4] rounded-xl shadow-2xl overflow-hidden
+                relative w-full aspect-[3/4] rounded-xl shadow-2xl
                 transition-transform duration-700 ease-out
                 cursor-pointer
               `}
@@ -149,21 +152,25 @@ const CollectionPage: React.FC = () => {
             >
               {/* 앞면 - 이미지 */}
               <div
+                className="absolute inset-0 w-full h-full rounded-xl overflow-hidden"
                 style={{
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden'
                 }}
               >
                 <img
-                  src={`/img/${selectedItem.folder}/${selectedItem.img}`}
+                  src={`/img/${selectedItem.folder}/${encodeURIComponent(selectedItem.img)}`}
                   alt={selectedItem.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error(`이미지 로드 실패: /img/${selectedItem.folder}/${selectedItem.img}`);
+                  }}
                 />
               </div>
 
               {/* 뒷면 - 정보 */}
               <div
-                className="w-full h-full bg-[#269dd9] p-8 flex flex-col justify-center items-center text-center"
+                className="absolute inset-0 w-full h-full bg-[#269dd9] rounded-xl p-8 flex flex-col justify-center items-center text-center"
                 style={{
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden',

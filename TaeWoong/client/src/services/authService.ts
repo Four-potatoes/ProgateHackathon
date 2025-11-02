@@ -108,6 +108,7 @@ const MOCK_USERS_KEY = 'mock_users_db';
 const DEMO_USERS = [
   {
     id: 'demo_1',
+    username: 'demo',
     email: 'demo@example.com',
     password: 'demo123',
     name: '테스트 사용자',
@@ -149,7 +150,7 @@ const mockLogin = async (credentials: LoginCredentials): Promise<AuthResponse> =
     setTimeout(() => {
       const users = getAllMockUsers();
       const user = users.find(
-        (u: any) => u.email === credentials.email && u.password === credentials.password
+        (u: any) => u.username === credentials.username && u.password === credentials.password
       );
 
       if (user) {
@@ -158,13 +159,14 @@ const mockLogin = async (credentials: LoginCredentials): Promise<AuthResponse> =
           token,
           user: {
             id: user.id,
+            username: user.username,
             email: user.email,
             name: user.name,
             avatar: user.avatar
           }
         });
       } else {
-        reject(new Error('이메일 또는 비밀번호가 올바르지 않습니다.'));
+        reject(new Error('아이디 또는 비밀번호가 올바르지 않습니다.'));
       }
     }, 500);
   });
@@ -175,6 +177,12 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
     setTimeout(() => {
       const users = getAllMockUsers();
 
+      // 이미 존재하는 아이디 확인
+      if (users.some((u: any) => u.username === credentials.username)) {
+        reject(new Error('이미 존재하는 아이디입니다.'));
+        return;
+      }
+
       // 이미 존재하는 이메일 확인
       if (users.some((u: any) => u.email === credentials.email)) {
         reject(new Error('이미 존재하는 이메일입니다.'));
@@ -184,6 +192,7 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
       // 새 사용자 생성
       const newUser = {
         id: `user_${Date.now()}`,
+        username: credentials.username,
         email: credentials.email,
         password: credentials.password,
         name: credentials.name || '사용자',
@@ -197,6 +206,7 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
         token,
         user: {
           id: newUser.id,
+          username: newUser.username,
           email: newUser.email,
           name: newUser.name,
           avatar: newUser.avatar

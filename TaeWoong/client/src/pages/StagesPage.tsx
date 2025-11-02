@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
-import { STAGES } from '../constants/gameData';
+import { STAGES, AVATAR_SHOP } from '../constants/gameData';
 import { GameItem } from '../types';
 
 const StagesPage: React.FC = () => {
@@ -28,7 +28,20 @@ const StagesPage: React.FC = () => {
       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-[#bfd0d9] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{playerAvatar}</span>
+            {/* 프로필 아바타 - 이미지 또는 이모지 */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
+              {AVATAR_SHOP.find(a => a.id === playerAvatar)?.image ? (
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
+                  <img
+                    src={AVATAR_SHOP.find(a => a.id === playerAvatar)?.image}
+                    alt="프로필"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <span className="text-2xl">{playerAvatar}</span>
+              )}
+            </div>
             <div>
               <h1 className="text-[#171a1c] font-bold">{playerName}</h1>
               {isGuest && <p className="text-xs text-[#61686b]">게스트 모드</p>}
@@ -120,9 +133,13 @@ const StagesPage: React.FC = () => {
                     {stage.items.slice(0, 8).map((item) => (
                       <div key={item.idx} className="aspect-square bg-[#e0e7eb] rounded overflow-hidden border border-[#bfd0d9]">
                         <img
-                          src={`/img/${stage.folder}/${item.img}`}
+                          src={`/img/${stage.folder}/${encodeURIComponent(item.img)}`}
                           alt={item.title}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error(`이미지 로드 실패: /img/${stage.folder}/${item.img}`);
+                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23e0e7eb"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy=".3em" fill="%23666"%3E%3F%3C/text%3E%3C/svg%3E';
+                          }}
                         />
                       </div>
                     ))}

@@ -15,8 +15,8 @@ router.get('/progress', authenticateToken, async (req, res) => {
 
         if (progress.length === 0) {
             await promisePool.query(
-                'INSERT INTO game_progress (user_id, unlocked_stages, completed_stages) VALUES (?, ?, ?)',
-                [req.user.id, JSON.stringify([1]), JSON.stringify([])]
+                'INSERT INTO game_progress (user_id, unlocked_stages, completed_stages, coins, purchased_avatars) VALUES (?, ?, ?, ?, ?)',
+                [req.user.id, JSON.stringify([1]), JSON.stringify([]), 0, JSON.stringify(['😊'])]
             );
 
             return res.json({
@@ -24,7 +24,9 @@ router.get('/progress', authenticateToken, async (req, res) => {
                 currentStage: 1,
                 unlockedStages: [1],
                 completedStages: [],
-                playerAvatar: '😊'
+                playerAvatar: '😊',
+                coins: 0,
+                purchasedAvatars: ['😊']
             });
         }
 
@@ -35,6 +37,8 @@ router.get('/progress', authenticateToken, async (req, res) => {
             unlockedStages: JSON.parse(data.unlocked_stages),
             completedStages: JSON.parse(data.completed_stages),
             playerAvatar: data.player_avatar,
+            coins: data.coins || 0,
+            purchasedAvatars: data.purchased_avatars ? JSON.parse(data.purchased_avatars) : ['😊'],
             updatedAt: data.updated_at
         });
     } catch (error) {
@@ -49,23 +53,27 @@ router.get('/progress', authenticateToken, async (req, res) => {
 // 게임 진행도 저장
 router.post('/progress', authenticateToken, async (req, res) => {
     try {
-        const { currentStage, unlockedStages, completedStages, playerAvatar } = req.body;
+        const { currentStage, unlockedStages, completedStages, playerAvatar, coins, purchasedAvatars } = req.body;
 
         await promisePool.query(
-            `INSERT INTO game_progress (user_id, current_stage, unlocked_stages, completed_stages, player_avatar)
-             VALUES (?, ?, ?, ?, ?)
+            `INSERT INTO game_progress (user_id, current_stage, unlocked_stages, completed_stages, player_avatar, coins, purchased_avatars)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
              current_stage = VALUES(current_stage),
              unlocked_stages = VALUES(unlocked_stages),
              completed_stages = VALUES(completed_stages),
              player_avatar = VALUES(player_avatar),
+             coins = VALUES(coins),
+             purchased_avatars = VALUES(purchased_avatars),
              updated_at = NOW()`,
             [
                 req.user.id,
                 currentStage,
                 JSON.stringify(unlockedStages),
                 JSON.stringify(completedStages),
-                playerAvatar || '😊'
+                playerAvatar || '😊',
+                coins || 0,
+                JSON.stringify(purchasedAvatars || ['😊'])
             ]
         );
 

@@ -17,8 +17,8 @@ export interface AuthContextType {
 
   // 인증
   loginAsGuest: (name: string, avatar: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string, avatar: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  signup: (username: string, email: string, password: string, name: string, avatar: string) => Promise<void>;
   logout: () => Promise<void>;
 
   // 세션
@@ -105,17 +105,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // 로그인
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
-      const response = await authService.login({ email, password });
-      
+      const response = await authService.login({ username, password });
+
       localStorage.setItem('auth_token', response.token);
       setCurrentUser(response.user);
       setPlayerName(response.user.name);
       setPlayerAvatar(response.user.avatar || PROFILE_AVATARS[0]);
       setIsLoggedIn(true);
       setIsGuest(false);
-      
+
       // 게스트 세션 제거
       localStorage.removeItem('guest_session');
     } catch (error) {
@@ -124,9 +124,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // 회원가입
-  const signup = async (email: string, password: string, name: string, avatar: string) => {
+  const signup = async (username: string, email: string, password: string, name: string, avatar: string) => {
     try {
       const response = await authService.signup({
+        username,
         email,
         password,
         name: name || '사용자',
