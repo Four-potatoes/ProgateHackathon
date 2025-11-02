@@ -46,6 +46,16 @@ CREATE TABLE IF NOT EXISTS rankings (
     INDEX idx_user_stage (user_id, stage_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 사용자 구매 프로필 테이블
+CREATE TABLE IF NOT EXISTS user_purchased_profiles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    profile_identifier VARCHAR(255) NOT NULL,
+    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_profile (user_id, profile_identifier)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 세션 테이블 (express-session 용)
 CREATE TABLE IF NOT EXISTS sessions (
     session_id VARCHAR(128) PRIMARY KEY,

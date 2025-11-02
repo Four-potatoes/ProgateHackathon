@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthResponse, LoginCredentials, SignupCredentials } from '../types';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { User } from '../types';
 import { PROFILE_AVATARS } from '../constants/gameData';
 import { authService } from '../services/authService';
 
@@ -37,77 +37,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 세션 복원
   const restoreSession = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      
-      if (token) {
-        // 토큰이 있으면 백엔드에서 사용자 정보 확인
-        try {
-          const userData = await authService.getCurrentUser();
-          setCurrentUser(userData);
-          setPlayerName(userData.name);
-          setPlayerAvatar(userData.avatar || PROFILE_AVATARS[0]);
-          setIsLoggedIn(true);
-          setIsGuest(false);
+    // 비동기 작업을 useEffect에서 처리하도록 변경
+    const token = localStorage.getItem('auth_token');
+    
+    if (token) {
+      try {
+        const userData = await authService.getCurrentUser();
+        setCurrentUser(userData);
+        setPlayerName(userData.name);
+        setPlayerAvatar(userData.avatar || PROFILE_AVATARS[0]);
+        setIsLoggedIn(true);
+        setIsGuest(false);
 
-          // 진행도 로드
-          const progress = localStorage.getItem(`game_progress_${userData.id}`);
-          if (progress) {
-            const data = JSON.parse(progress);
-            setCoins(data.coins || 0);
-          }
-        } catch (error) {
-          console.error('사용자 정보 로드 실패:', error);
-          localStorage.removeItem('auth_token');
-          setCurrentUser(null);
-          setIsLoggedIn(false);
+        const progress = localStorage.getItem(`game_progress_${userData.id}`);
+        if (progress) {
+          const data = JSON.parse(progress);
+          setCoins(data.coins || 0);
         }
-      } else {
-        // 게스트 모드 데이터 복원
-        const guestData = localStorage.getItem('guest_session');
-        if (guestData) {
+      } catch (error) {
+        console.error('사용자 정보 로드 실패:', error);
+        localStorage.removeItem('auth_token');
+      }
+    } else {
+      const guestData = localStorage.getItem('guest_session');
+      if (guestData) {
+        try {
           const data = JSON.parse(guestData);
           setPlayerName(data.name);
           setPlayerAvatar(data.avatar);
           setCoins(data.coins || 0);
           setIsGuest(true);
           setIsLoggedIn(true);
+        } catch (error) {
+          console.error('게스트 데이터 복원 실패:', error);
         }
       }
-    } catch (error) {
-      console.error('세션 복원 실패:', error);
     }
   };
 
   // 게스트 로그인
   const loginAsGuest = async (name: string, avatar: string) => {
-    const guestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const guestData = {
-      id: guestId,
-      name: name.trim() || '익명',
-      avatar: avatar || PROFILE_AVATARS[0],
-      email: undefined,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const guestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const guestData = {
+        id: guestId,
+        name: name.trim() || '익명',
+        avatar: avatar || PROFILE_AVATARS[0],
+        email: undefined,
+        createdAt: new Date().toISOString()
+      };
 
-    setCurrentUser(guestData as User);
-    setPlayerName(guestData.name);
-    setPlayerAvatar(guestData.avatar);
-    setIsGuest(true);
-    setIsLoggedIn(true);
-    setCoins(0);
+      setCurrentUser(guestData as User);
+      setPlayerName(guestData.name);
+      setPlayerAvatar(guestData.avatar);
+      setIsGuest(true);
+      setIsLoggedIn(true);
+      setCoins(0);
 
-    // 로컬스토리지에 저장
-    localStorage.setItem('guest_session', JSON.stringify({
-      ...guestData,
-      coins: 0
-    }));
+      // 로컬스토리지에 저장
+      localStorage.setItem('guest_session', JSON.stringify({
+        ...guestData,
+        coins: 0
+      }));
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '게스트 로그인 실패');
+    }
   };
 
   // 로그인
   const login = async (email: string, password: string) => {
     try {
-      const response: AuthResponse = await authService.login({ email, password });
+      const response = await authService.login({ email, password });
       
       localStorage.setItem('auth_token', response.token);
       setCurrentUser(response.user);
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 회원가입
   const signup = async (email: string, password: string, name: string, avatar: string) => {
     try {
-      const response: AuthResponse = await authService.signup({
+      const response = await authService.signup({
         email,
         password,
         name: name || '사용자',
@@ -150,10 +150,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 로그아웃
   const logout = async () => {
     try {
-      if (!isGuest) {
-        await authService.logout();
+      if (!isGuest && currentUser) {
+        try {
+          await authService.logout();
+        } catch (error) {
+          console.warn('백엔드 로그아웃 실패, 로컬 정리 진행:', error);
+        }
       }
-      
+    } catch (error) {
+      console.error('로그아웃 중 오류:', error);
+    } finally {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('guest_session');
       setCurrentUser(null);
@@ -162,8 +168,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCoins(0);
       setIsLoggedIn(false);
       setIsGuest(false);
-    } catch (error) {
-      console.error('로그아웃 실패:', error);
     }
   };
 

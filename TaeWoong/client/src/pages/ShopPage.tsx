@@ -19,7 +19,7 @@ const ShopPage: React.FC = () => {
     if (displayCoins >= avatar.price && !purchasedAvatars.has(avatar.id)) {
       setCoins(displayCoins - avatar.price);
       addPurchasedAvatar(avatar.id);
-      setMessage(`${avatar.name} 아바타를 구매했습니다! 🎉`);
+      setMessage(`${avatar.name} 아바타를 구매했습니다!`);
       setTimeout(() => setMessage(''), 3000);
     } else if (purchasedAvatars.has(avatar.id)) {
       setMessage('이미 보유한 아바타입니다.');
@@ -39,123 +39,133 @@ const ShopPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-[#e5f7ff]">
       {/* 헤더 */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/10 sticky top-0 z-30">
+      <header className="bg-white border-b border-[#bfd0d9] sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold text-white">🛒 프로필 상점</h1>
-              <p className="text-gray-300 mt-2">코인을 모아 새로운 프로필 아바타를 구매하세요!</p>
+            <div className="flex items-center gap-4">
+              {/* 좌측 프로필 */}
+              <div className="flex items-center gap-3 px-4 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
+                {AVATAR_SHOP.find(a => a.id === playerAvatar)?.image ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
+                    <img
+                      src={AVATAR_SHOP.find(a => a.id === playerAvatar)?.image}
+                      alt="프로필"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-2xl">{playerAvatar}</span>
+                )}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-[#269dd9]">프로필 상점</h1>
+                <p className="text-[#61686b] text-sm">코인을 모아 새로운 프로필 아바타를 구매하세요!</p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/stages')}
-              className="py-2 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all"
-            >
-              스테이지 선택
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
+                <span className="font-semibold text-[#269dd9]">코인:</span>
+                <span className="font-bold text-[#269dd9]">{displayCoins}</span>
+              </div>
+              <button
+                onClick={() => navigate('/stages')}
+                className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              >
+                스테이지 선택
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* 메시지 */}
       {message && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-40">
-          {message}
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-[#33ccb3] text-white px-6 py-3 rounded-lg shadow-lg font-semibold">
+            {message}
+          </div>
         </div>
       )}
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* 현재 프로필 */}
-        <div className="bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-xl p-8 mb-12 text-center">
-          <p className="text-gray-300 text-sm mb-2">현재 프로필 아바타</p>
-          <div className="text-8xl mb-4">{playerAvatar}</div>
-          <p className="text-white font-bold text-lg">💰 보유 코인: {displayCoins}</p>
-        </div>
+        {/* 카테고리 */}
+        {['free', 'basic', 'premium', 'legendary'].map((category) => {
+          const categoryItems = AVATAR_SHOP.filter((a) => a.category === category);
+          const categoryNames: Record<string, string> = {
+            free: '무료',
+            basic: '기본',
+            premium: '프리미엄',
+            legendary: '레전더리'
+          };
 
-        {/* 상점 그리드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12">
-          {AVATAR_SHOP.map((avatar) => {
-            const isOwned = purchasedAvatars.has(avatar.id);
-            const canAfford = displayCoins >= avatar.price;
-            const isSelected = playerAvatar === avatar.id;
+          return (
+            <div key={category} className="mb-12">
+              <h2 className="text-3xl font-bold text-[#269dd9] mb-6">{categoryNames[category]}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6">
+                {categoryItems.map((avatar) => {
+                  const isPurchased = purchasedAvatars.has(avatar.id);
+                  const isSelected = playerAvatar === avatar.id;
+                  const canAfford = displayCoins >= avatar.price;
 
-            return (
-              <div
-                key={avatar.id}
-                className={`
-                  bg-white/10 backdrop-blur-md border-2 rounded-xl p-4 text-center
-                  transition-all duration-300
-                  ${
-                    isSelected
-                      ? 'border-yellow-400 shadow-lg shadow-yellow-400/50'
-                      : isOwned
-                        ? 'border-green-400'
-                        : canAfford
-                          ? 'border-indigo-400'
-                          : 'border-gray-500'
-                  }
-                `}
-              >
-                <div className="text-6xl mb-2">{avatar.id}</div>
-                <p className="font-bold text-white text-sm">{avatar.name}</p>
-                <div className="flex items-center justify-center gap-1 my-2">
-                  <span className="text-lg">🪙</span>
-                  <span className="font-bold text-yellow-300">{avatar.price}</span>
-                </div>
+                  return (
+                    <div
+                      key={avatar.id}
+                      className={`
+                        relative bg-[#f5fcff] rounded-lg shadow-md p-4 text-center border-2 transition-all
+                        ${isSelected ? 'border-[#33ccb3]' : isPurchased ? 'border-[#269dd9]' : 'border-[#bfd0d9]'}
+                      `}
+                    >
+                      {avatar.image ? (
+                        <div className="w-20 h-20 mx-auto mb-2 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
+                          <img
+                            src={avatar.image}
+                            alt={avatar.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-6xl mb-2">{avatar.id}</div>
+                      )}
+                      <h3 className="font-bold text-sm text-[#269dd9] mb-1">{avatar.name}</h3>
+                      <p className="text-xs text-[#61686b] mb-3">{avatar.price} 코인</p>
 
-                {isSelected && <p className="text-xs text-yellow-300 font-bold mb-2">✓ 선택됨</p>}
-
-                {isOwned ? (
-                  <button
-                    onClick={() => handleSelectAvatar(avatar.id)}
-                    className={`
-                      w-full py-2 px-3 text-sm rounded-lg font-bold transition-all
-                      ${
-                        isSelected
-                          ? 'bg-yellow-500 text-white cursor-default'
-                          : 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
-                      }
-                    `}
-                  >
-                    {isSelected ? '사용 중' : '선택'}
-                  </button>
-                ) : canAfford ? (
-                  <button
-                    onClick={() => handlePurchase(avatar.id)}
-                    className="w-full py-2 px-3 text-sm rounded-lg font-bold text-white bg-indigo-500 hover:bg-indigo-600 transition-colors"
-                  >
-                    구매하기
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    className="w-full py-2 px-3 text-sm rounded-lg font-bold text-gray-500 bg-gray-600 cursor-not-allowed"
-                  >
-                    부족
-                  </button>
-                )}
+                      {isSelected ? (
+                        <div className="text-xs font-semibold text-[#33ccb3] py-2">사용 중</div>
+                      ) : isPurchased ? (
+                        <button
+                          onClick={() => handleSelectAvatar(avatar.id)}
+                          className="w-full py-2 px-3 rounded bg-[#269dd9] hover:bg-[#1e7db0] text-white text-xs font-semibold transition"
+                        >
+                          착용하기
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handlePurchase(avatar.id)}
+                          disabled={!canAfford && avatar.price > 0}
+                          className={`
+                            w-full py-2 px-3 rounded text-xs font-semibold transition
+                            ${
+                              avatar.price === 0
+                                ? 'bg-[#33ccb3] hover:bg-[#29a895] text-white'
+                                : canAfford
+                                ? 'bg-[#269dd9] hover:bg-[#1e7db0] text-white'
+                                : 'bg-[#e7ecef] text-[#61686b] cursor-not-allowed'
+                            }
+                          `}
+                        >
+                          {avatar.price === 0 ? '받기' : '구매하기'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-
-        {/* 카테고리 설명 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-2">📦 기본 (무료)</h3>
-            <p className="text-gray-300 text-sm">기본 아바타 - 비용 없이 모두 사용 가능</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-2">⭐ 프리미엄 (10-15 코인)</h3>
-            <p className="text-gray-300 text-sm">AI 퀴즈를 풀어 코인을 모아 구매하세요</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-2">💎 레전드 (100 코인)</h3>
-            <p className="text-gray-300 text-sm">많은 코인이 필요한 특별한 아바타</p>
-          </div>
-        </div>
+            </div>
+          );
+        })}
       </main>
     </div>
   );
