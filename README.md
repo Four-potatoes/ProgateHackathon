@@ -36,7 +36,6 @@
   - 도감을 통해 각 문화에 대한 정보 얻어가기
   - AI가 생성해주는 퀴즈를 풀어보며 한국 문화 공부하기 (포인트 획득)
   - 획득한 포인트를 통해 상점에서 다양한 한국 캐릭터를 구매하여 프로필에 적용하기
-<<<<<<< HEAD
   - 랭킹 순위를 올려가며 경쟁력 키우기
 
 ---
@@ -46,22 +45,10 @@
 ### Frontend
 ![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![React Router](https://img.shields.io/badge/React_Router-CA4245?style=for-the-badge&logo=react-router&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white)
 
 ### Backend
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=json-web-tokens&logoColor=white)
-![bcrypt](https://img.shields.io/badge/bcrypt-3B5998?style=for-the-badge&logo=security&logoColor=white)
 
-### Tools & Libraries
-![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
+### 협업 Tools
 ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
-![dotenv](https://img.shields.io/badge/.env-ECD53F?style=for-the-badge&logo=dotenv&logoColor=black)
-![CORS](https://img.shields.io/badge/CORS-00D8FF?style=for-the-badge&logo=fastify&logoColor=white)
-=======
-  - 배지를 수집하고 랭킹 순위를 올려가며 경쟁력 키우기
->>>>>>> 96a274da3be3a2b6fc49d8a1b4188d254671e74e
