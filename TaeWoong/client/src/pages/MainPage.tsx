@@ -76,7 +76,9 @@ const MainPage: React.FC = () => {
             </ul>
           </nav>
           <ul className="util">
-            <li><Link to="/welcome">로그인/회원가입</Link></li>
+            <li><Link to="/welcome" style={{
+        fontSize: '20px',
+      }}>로그인 / 회원가입</Link></li>
           </ul>
           <nav className="hambugerNav" id="hambugerNav">
             <i className="fa-solid fa-bars"></i>
@@ -106,7 +108,7 @@ const MainPage: React.FC = () => {
               <div className="line"></div>
 
 </h1>
-            <h1 >게임을 통해 한국의 모든 것을 확인해보세요!</h1>
+            <h1 >게임을 통해 한국의 모든 것을 배울 수 있어요!</h1>
           </div>
           <div className="scrollText">
             <h3><i className="fa-solid fa-computer-mouse"></i></h3>
@@ -129,22 +131,21 @@ const MainPage: React.FC = () => {
           </div>
           <div ref={el => { textDivsRef.current[1] = el; }}>
             <h1>AI를 통해 <br />
-              새로운 문제를 경험해보세요</h1>
+              새로운 문제를 풀어보아요</h1>
           </div>
           <div ref={el => { textDivsRef.current[2] = el; }}>
             <h1>문제를 풀고 얻은 포인트로 <br />
               다양한 프로필과 캐릭터를 꾸며보세요</h1>
           </div>
           <div ref={el => { textDivsRef.current[3] = el; }}>
-            <h1>한국을 탐험 한국을 탐험 한국을 탐험</h1>
+            <h1>한국의 모든 문화를 K-Culture Hub에서 만나보아요</h1>
           </div>
         </div>
       </main>
       <footer style={{
   backgroundColor: '#1a1a1a',
   borderTop: '1px solid #333',
-  padding: '60px 40px',
-  marginTop: '80px',
+  padding: '60px 20px',
 }}>
   <div style={{
     maxWidth: '1280px',
@@ -177,8 +178,8 @@ const MainPage: React.FC = () => {
       }}>
         <p style={{ margin: '5px 0' }}>상호명 (주)사차원 감자들 | 대표 : 최웅식</p>
         <p style={{ margin: '5px 0' }}>개인정보책임자 : 제준혁 | 사업자등록번호 : 010-9982-6851</p>
-        <p style={{ margin: '5px 0' }}>통신판매업신고번호 : 제 2023-인천부평-02377</p>
-        <p style={{ margin: '5px 0' }}>주소 : 서울 서대문구 연세로5다길 3 B1</p>
+        <p style={{ margin: '5px 0' }}>통신판매업신고번호 : 제 2025-서울서대문-01102</p>
+        <p style={{ margin: '5px 0' }}>주소 : 서울 서대문구 연세로5다길 3 지층</p>
       </div>
 
       <div style={{

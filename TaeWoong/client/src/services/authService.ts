@@ -49,6 +49,7 @@ const saveMockUser = (user: any) => {
 const generateMockToken = (userId: string): string => {
   const token = `mock_jwt_${userId}_${Date.now()}`;
   localStorage.setItem('auth_token', token);
+  localStorage.setItem('current_user_id', userId);
   return token;
 };
 
@@ -62,6 +63,7 @@ const mockLogin = async (credentials: LoginCredentials): Promise<AuthResponse> =
 
       if (user) {
         const token = generateMockToken(user.id);
+        localStorage.setItem('current_user_id', user.id);
         resolve({
           token,
           user: {
@@ -84,19 +86,16 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
     setTimeout(() => {
       const users = getAllMockUsers();
 
-      // 이미 존재하는 아이디 확인
       if (users.some((u: any) => u.username === credentials.username)) {
         reject(new Error('이미 존재하는 아이디입니다.'));
         return;
       }
 
-      // 이미 존재하는 이메일 확인
       if (users.some((u: any) => u.email === credentials.email)) {
         reject(new Error('이미 존재하는 이메일입니다.'));
         return;
       }
 
-      // 새 사용자 생성
       const newUser = {
         id: `user_${Date.now()}`,
         username: credentials.username,
@@ -108,6 +107,7 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
 
       saveMockUser(newUser);
       const token = generateMockToken(newUser.id);
+      localStorage.setItem('current_user_id', newUser.id);
 
       resolve({
         token,
@@ -127,13 +127,13 @@ const mockGetCurrentUser = async (): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const token = localStorage.getItem('auth_token');
-      if (!token || !token.startsWith('mock_jwt_')) {
+      const userId = localStorage.getItem('current_user_id');
+
+      if (!token || !userId) {
         reject(new Error('인증되지 않은 사용자입니다.'));
         return;
       }
 
-      // 토큰에서 사용자 ID 추출
-      const userId = token.split('_')[2];
       const users = getAllMockUsers();
       const user = users.find((u: any) => u.id === userId);
 
@@ -156,14 +156,13 @@ const mockGetCurrentUser = async (): Promise<User> => {
 const mockUpdateProfile = async (data: { avatar?: string; name?: string }): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      const token = localStorage.getItem('auth_token');
-      if (!token || !token.startsWith('mock_jwt_')) {
+      const userId = localStorage.getItem('current_user_id');
+
+      if (!userId) {
         reject(new Error('인증되지 않은 사용자입니다.'));
         return;
       }
 
-      // 토큰에서 사용자 ID 추출
-      const userId = token.split('_')[2];
       const users = getAllMockUsers();
       const user = users.find((u: any) => u.id === userId);
 
@@ -172,7 +171,6 @@ const mockUpdateProfile = async (data: { avatar?: string; name?: string }): Prom
         return;
       }
 
-      // 프로필 업데이트
       if (data.avatar !== undefined) {
         user.avatar = data.avatar;
       }
@@ -212,17 +210,18 @@ export const authService = {
   // 일반 로그인
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
-      // 백엔드 시도
       try {
         const response = await api.post('/auth/login', credentials);
         const authData = response.data as AuthResponse;
         if (authData.token) {
           localStorage.setItem('auth_token', authData.token);
+          if (authData.user && authData.user.id) {
+            localStorage.setItem('current_user_id', authData.user.id);
+          }
         }
         return authData;
       } catch (backendError) {
         console.warn('백엔드 로그인 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
         return mockLogin(credentials);
       }
     } catch (error) {
@@ -234,17 +233,18 @@ export const authService = {
   // 회원가입
   signup: async (credentials: SignupCredentials): Promise<AuthResponse> => {
     try {
-      // 백엔드 시도
       try {
         const response = await api.post('/auth/signup', credentials);
         const authData = response.data as AuthResponse;
         if (authData.token) {
           localStorage.setItem('auth_token', authData.token);
+          if (authData.user && authData.user.id) {
+            localStorage.setItem('current_user_id', authData.user.id);
+          }
         }
         return authData;
       } catch (backendError) {
         console.warn('백엔드 회원가입 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
         return mockSignup(credentials);
       }
     } catch (error) {
@@ -261,19 +261,18 @@ export const authService = {
       console.warn('로그아웃 API 요청 실패:', error);
     } finally {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user_id');
     }
   },
 
   // 현재 사용자 정보 조회
   getCurrentUser: async (): Promise<User> => {
     try {
-      // 백엔드 시도
       try {
         const response = await api.get('/auth/me');
         return response.data as User;
       } catch (backendError) {
         console.warn('백엔드 사용자 정보 조회 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
         return mockGetCurrentUser();
       }
     } catch (error) {
@@ -288,10 +287,16 @@ export const authService = {
       const token = localStorage.getItem('auth_token');
       if (!token) return false;
 
-      await api.get('/auth/verify');
-      return true;
+      try {
+        await api.get('/auth/verify');
+        return true;
+      } catch (error) {
+        // 백엔드 실패 시 로컬 토큰만 확인
+        return token && localStorage.getItem('current_user_id') ? true : false;
+      }
     } catch (error) {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user_id');
       return false;
     }
   },
@@ -299,13 +304,11 @@ export const authService = {
   // 프로필 업데이트
   updateProfile: async (data: { avatar?: string; name?: string }): Promise<User> => {
     try {
-      // 백엔드 시도
       try {
         const response = await api.put('/auth/profile', data);
         return response.data as User;
       } catch (backendError) {
         console.warn('백엔드 프로필 업데이트 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
         return mockUpdateProfile(data);
       }
     } catch (error) {

@@ -6,7 +6,7 @@ import { AVATAR_SHOP } from '../constants/gameData';
 
 const ShopPage: React.FC = () => {
   const navigate = useNavigate();
-  const { playerAvatar, setPlayerAvatar, coins: authCoins } = useAuth();
+  const { playerAvatar, setPlayerAvatar, coins: authCoins, playerName } = useAuth();
   const { coins, setCoins, purchasedAvatars, addPurchasedAvatar } = useGame();
   const [message, setMessage] = useState('');
   const [buttonHovered, setButtonHovered] = useState(false);
@@ -104,8 +104,33 @@ const ShopPage: React.FC = () => {
                 fontWeight: '700',
                 color: '#2e3538',
               }}>
-                {displayCoins}
+                {playerName || 'Player'}
               </span>
+              {/* 코인 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: '#f5fcff',
+              border: '2px solid #269dd9',
+              borderRadius: '8px',
+            }}>
+              <span style={{
+                fontWeight: '600',
+                color: '#269dd9',
+                fontSize: '14px',
+              }}>
+                코인:
+              </span>
+              <span style={{
+                fontWeight: '700',
+                color: '#269dd9',
+                fontSize: '16px',
+              }}>
+                {coins}
+              </span>
+            </div>
             </div>
 
             <button

@@ -26,6 +26,7 @@ const QuizPage: React.FC = () => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [quizCount, setQuizCount] = useState(0);
   const [buttonHovered, setButtonHovered] = useState(false);
+  const [usedItems, setUsedItems] = useState<number[]>([]);
 
   useEffect(() => {
     if (isGuest || completedStages.length === 0) {
@@ -50,7 +51,19 @@ const QuizPage: React.FC = () => {
       return;
     }
 
-    const randomItem = unlockedItems[Math.floor(Math.random() * unlockedItems.length)];
+    // 사용하지 않은 아이템만 필터링
+    const availableItems = unlockedItems.filter(item => !usedItems.includes(item.idx));
+
+    // 8문제를 다 풀었거나 사용 가능한 아이템이 없으면 리셋
+    if (availableItems.length === 0) {
+      setUsedItems([]);
+      const randomItem = unlockedItems[Math.floor(Math.random() * unlockedItems.length)];
+      createQuiz(randomItem, unlockedItems);
+      setUsedItems([randomItem.idx]);
+      return;
+    }
+
+    const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
     const allItems = STAGES.flatMap((stage) => stage.items);
     const wrongOptions = allItems
       .filter((item) => item.idx !== randomItem.idx)
@@ -71,8 +84,31 @@ const QuizPage: React.FC = () => {
       }
     });
 
+    setUsedItems(prev => [...prev, randomItem.idx]);
     setSelectedAnswer(null);
     setQuizState('question');
+  };
+
+  const createQuiz = (randomItem: any, unlockedItems: any[]) => {
+    const allItems = STAGES.flatMap((stage) => stage.items);
+    const wrongOptions = allItems
+      .filter((item) => item.idx !== randomItem.idx)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map((item) => item.desc);
+
+    const options = [randomItem.desc, ...wrongOptions].sort(() => Math.random() - 0.5);
+
+    setCurrentQuiz({
+      question: `"${randomItem.title}"은(는) 무엇을 설명하는 것일까요?`,
+      options: options,
+      correctAnswer: randomItem.desc,
+      item: {
+        title: randomItem.title,
+        desc: randomItem.desc,
+        icon: randomItem.icon
+      }
+    });
   };
 
   const handleSelectAnswer = (answer: string) => {

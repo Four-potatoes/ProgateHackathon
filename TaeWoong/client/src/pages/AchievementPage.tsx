@@ -116,7 +116,7 @@ const AchievementPage: React.FC = () => {
     },
     {
       id: 'speed_runner',
-      name: '스피드 러너',
+      name: '게임을 사랑해줘서 감사!',
       description: '게임을 10회 이상 클리어했습니다',
       icon: '',
       color: 'bg-[#33ccb3]',
@@ -432,7 +432,7 @@ const AchievementPage: React.FC = () => {
                 backgroundColor: badge.unlocked ? badge.color : '#ffffff',
                 borderColor: badge.unlocked ? '#269dd9' : '#bfd0d9',
                 opacity: badge.unlocked ? 1 : 0.5,
-                color: badge.unlocked ? '#ffffff' : '#61686b',
+                color: badge.unlocked ? '#111111' : '#61686b',
                 cursor: 'pointer',
               }}
             >
@@ -465,14 +465,14 @@ const AchievementPage: React.FC = () => {
                   fontSize: '20px',
                   fontWeight: '700',
                   margin: '0 0 8px 0',
-                  color: badge.unlocked ? '#ffffff' : '#61686b',
+                  color: badge.unlocked ? '#000000' : '#61686b',
                 }}>
                   {badge.name}
                 </h3>
                 <p style={{
                   fontSize: '14px',
                   margin: '8px 0 0 0',
-                  color: badge.unlocked ? 'rgba(255,255,255,0.9)' : '#61686b',
+                  color: badge.unlocked ? '#000000' : '#61686b',
                 }}>
                   {badge.description}
                 </p>
@@ -482,7 +482,7 @@ const AchievementPage: React.FC = () => {
               <div style={{
                 fontSize: '12px',
                 fontWeight: '600',
-                color: badge.unlocked ? 'rgba(255,255,255,0.8)' : '#61686b',
+                color: badge.unlocked ? '#000000' : '#61686b',
               }}>
                 {badge.condition}
               </div>
@@ -522,7 +522,7 @@ const AchievementPage: React.FC = () => {
                 <div style={{
                   marginTop: '12px',
                   fontSize: '12px',
-                  color: 'rgba(255,255,255,0.8)',
+                  color: '#000000',
                 }}>
                   {badge.unlockedDate}에 해제됨
                 </div>
@@ -561,7 +561,7 @@ const AchievementPage: React.FC = () => {
             <li>모든 스테이지를 클리어해서 "스테이지 마스터" 배지를 얻으세요</li>
             <li>AI 퀴즈를 풀어서 코인을 모아 배지를 해제하세요</li>
             <li>매일 게임을 플레이해서 "연속 플레이어" 배지를 목표로 하세요</li>
-            <li>빠르게 게임을 완료해서 "스피드 러너" 배지를 노려보세요</li>
+            <li>게임을 완료해서 많은 배지를 노려보세요</li>
           </ul>
         </div>
       </section>
