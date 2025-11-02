@@ -1,0 +1,309 @@
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-1Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-2ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-3Light.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-9Black.woff2') format('woff2');
+    font-weight: 900;
+    font-display: swap;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Presentation';
+}
+
+body {
+    background: #fff;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+li {
+    list-style: none;
+}
+
+:root {
+    --containerSize: 1440px;
+}
+
+/* 전체 컨테이너 */
+.container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+.mainContent {
+    display: flex;
+    width: 100vw;
+    height: 100%;
+}
+
+/* 태극 문양 이미지들 */
+.container > img:nth-child(1) {
+    position: absolute;
+    top: 45%;
+    left: 45%;
+}
+.container > img:nth-child(2) {
+    position: absolute;
+    left: 5%;
+    top: 10%;
+}
+.container > img:nth-child(3) {
+    position: absolute;
+    right: 35%;
+    top: 10%;
+}
+.container > img:nth-child(4) {
+    position: absolute;
+    right: 35%;
+    bottom: 10%;
+}
+.container > img:nth-child(5) {
+    position: absolute;
+    left: 5%;
+    bottom: 10%;
+}
+
+/* 왼쪽 영역 */
+.inner {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    background: rgba(150, 200, 220, 0.2);
+}
+.inner > h1 {
+    color: #111;
+}
+
+/* 폼 전체 */
+form {
+    width: 500px;
+    height: auto;
+    min-height: 575px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    gap: 20px;
+    align-items: center;
+    z-index: 10;
+    border-radius: 5px;
+    padding: 20px 0;
+}
+
+/* 로고 영역 */
+form > .logo {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 탭 영역 */
+.utilTab {
+    width: 100%;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+}
+.utilTabInner {
+    width: 90%;
+    height: 100%;
+    background: #eee;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 탭 버튼 */
+.utilTabInner > button {
+    width: 49%;
+    height: 85%;
+    background: #fff;
+    color: rgba(0, 92, 117, 1);
+    border: 2px solid rgba(0, 92, 117, 1);
+    outline: none;
+    font-size: 20px;
+    border-radius: 7px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.utilTabInner > button:nth-child(2) {
+    background: #eee;
+    border: none;
+    color: #111;
+}
+.utilTabInner > button.active {
+    background: #fff;
+    border: 2px solid rgba(0, 92, 117, 1);
+    color: rgba(0, 92, 117, 1);
+}
+
+/* 폼 내부 */
+.formInner {
+    width: 450px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: all 0.5s ease;
+}
+
+/* 입력 필드 영역 */
+.inputContainer {
+    width: 100%;
+    height: 100px;
+}
+.inputContainer > h3 {
+    width: 100%;
+    height: 40px;
+    align-content: center;
+}
+.inputContainer > input {
+    width: 100%;
+    height: 50px;
+    padding-left: 10px;
+    border: 1px solid #ccc;
+    outline: none;
+    border-radius: 5px;
+    transition: border 0.3s ease;
+}
+.inputContainer > input:focus {
+    border: 1px solid rgba(0, 92, 117, 1);
+}
+
+/* 버튼 영역 */
+.buttonContainer {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+.buttonContainer > button {
+    width: 100%;
+    height: 50px;
+    background: rgba(0, 140, 150, 1);
+    border: none;
+    color: #fff;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+.buttonContainer > button:hover {
+    background: rgba(0, 92, 117, 1);
+    cursor: pointer;
+}
+.buttonContainer > p > a {
+    color: rgba(0, 92, 117, 1);
+    text-decoration: underline;
+}
+
+/* 오른쪽 영역 */
+.rightSide {
+    flex: 1;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(169, 200, 212, 1) 35%, rgba(0, 92, 117, 1) 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 5px;
+}
+.rightSide > h1 {
+    font-size: 70px;
+    color: #fff;
+}
+/* 폼 전환용 */
+.hidden {
+  display: none;
+}
+
+/* 활성화된 탭 스타일 */
+.utilTabInner > button.active {
+  background: #fff;
+  border: 2px solid rgba(0, 92, 117, 1);
+  color: rgba(0, 92, 117, 1);
+}
+
+/* 비활성 탭 스타일 */
+.utilTabInner > button:not(.active) {
+  background: #eee;
+  border: none;
+  color: #111;
+}
+#signupForm > .buttonContainer {
+    height: 80px;
+    justify-content: center;
+}
+.cursor {
+  display: inline-block;
+  width: 1ch;
+  animation: blink 0.7s step-start infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}

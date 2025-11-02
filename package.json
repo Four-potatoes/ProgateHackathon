@@ -1,0 +1,40 @@
+{
+  "name": "k-everything-backend",
+  "version": "1.0.0",
+  "description": "K-Everything Memory Game Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node -r dotenv/config server.js",
+    "dev": "nodemon -r dotenv/config server.js",
+    "client-dev": "cd client && npm start"
+  },
+  "keywords": [
+    "game",
+    "memory",
+    "k-culture"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "express-mysql-session": "^3.0.0",
+    "express-session": "^1.17.3",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.6.5",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "react-router-dom": "^7.9.5"
+  },
+  "devDependencies": {
+    "@types/react-router-dom": "^5.3.3",
+    "autoprefixer": "^10.4.21",
+    "nodemon": "^3.0.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.16"
+  }
+}

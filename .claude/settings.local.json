@@ -7,7 +7,18 @@
       "Bash(npm start)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(set PORT=3002)",
+      "Bash(dir:*)",
+      "Bash(for item in assets config data database middleware migrations routes server.js)",
+      "Bash(do cp -r \"TaeWoong/$item\" .)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(nul)",
+      "Bash(rm -rf TaeWoong Claude FullStack nul)",
+      "Bash(rm -rf Claude FullStack nul)",
+      "Bash(rm:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
