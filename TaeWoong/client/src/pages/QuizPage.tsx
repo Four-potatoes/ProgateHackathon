@@ -25,6 +25,7 @@ const QuizPage: React.FC = () => {
   const [quizState, setQuizState] = useState<'loading' | 'question' | 'checking' | 'result'>('loading');
   const [isCorrect, setIsCorrect] = useState(false);
   const [quizCount, setQuizCount] = useState(0);
+  const [buttonHovered, setButtonHovered] = useState(false);
 
   useEffect(() => {
     if (isGuest || completedStages.length === 0) {
@@ -95,35 +96,164 @@ const QuizPage: React.FC = () => {
     loadQuiz();
   };
 
+  const currentAvatar = AVATAR_SHOP.find(a => a.id === playerAvatar);
+
   if (isGuest) {
     return (
-      <div className="min-h-screen bg-[#e5f7ff]">
-        <header className="bg-white border-b border-[#bfd0d9] sticky top-0 z-30 shadow-sm">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">AI 퀴즈</h1>
-                <p className="text-[#2e3538] mt-2">한국 문화 퀴즈를 풀고 코인을 획득하세요!</p>
+      <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderBottom: '2px solid #bfd0d9',
+          padding: '32px 24px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            maxWidth: '1280px',
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '32px',
+          }}>
+            {/* 프로필 + 버튼 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '24px',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+              }}>
+                {currentAvatar?.image ? (
+                  <img
+                    src={currentAvatar.image}
+                    alt={currentAvatar.name}
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      border: '3px solid #269dd9',
+                      objectFit: 'cover',
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    backgroundColor: '#269dd9',
+                    border: '3px solid #269dd9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    flexShrink: 0,
+                  }}>
+                    {playerAvatar || '😊'}
+                  </div>
+                )}
+                <span style={{
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#2e3538',
+                }}>
+                  {playerName || 'Player'}
+                </span>
               </div>
+
               <button
                 onClick={() => navigate('/stages')}
-                className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+                onMouseEnter={() => setButtonHovered(true)}
+                onMouseLeave={() => setButtonHovered(false)}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#ffffff',
+                  backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 뒤로가기
               </button>
             </div>
-          </div>
-        </header>
 
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-8 text-center shadow-md">
-            <p className="text-xl text-[#269dd9] font-bold mb-4">로그인 필요</p>
-            <p className="text-[#2e3538] mb-6">
+            {/* 제목 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              <h1 style={{
+                fontSize: '40px',
+                fontWeight: '700',
+                color: '#269dd9',
+                margin: '0',
+                padding: '0',
+              }}>
+                AI 퀴즈
+              </h1>
+              <p style={{
+                fontSize: '16px',
+                color: '#61686b',
+                margin: '0',
+                padding: '0',
+              }}>
+                한국 문화를 배워봅시다!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <main style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '48px 24px',
+        }}>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '32px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '20px',
+              color: '#269dd9',
+              fontWeight: '700',
+              marginBottom: '16px',
+              margin: '0 0 16px 0',
+            }}>로그인 필요</p>
+            <p style={{
+              fontSize: '16px',
+              color: '#2e3538',
+              marginBottom: '24px',
+              margin: '0 0 24px 0',
+            }}>
               AI 퀴즈는 로그인한 사용자만 이용할 수 있습니다.
             </p>
             <button
               onClick={() => navigate('/')}
-              className="py-3 px-8 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e7db0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#269dd9'}
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontSize: '16px',
+                color: '#ffffff',
+                backgroundColor: '#269dd9',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+              }}
             >
               로그인하러 가기
             </button>
@@ -135,33 +265,160 @@ const QuizPage: React.FC = () => {
 
   if (completedStages.length === 0) {
     return (
-      <div className="min-h-screen bg-[#e5f7ff]">
-        <header className="bg-white border-b border-[#bfd0d9] sticky top-0 z-30 shadow-sm">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">AI 퀴즈</h1>
-                <p className="text-[#2e3538] mt-2">한국 문화 퀴즈를 풀고 코인을 획득하세요!</p>
+      <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderBottom: '2px solid #bfd0d9',
+          padding: '32px 24px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            maxWidth: '1280px',
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '32px',
+          }}>
+            {/* 프로필 + 버튼 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '24px',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+              }}>
+                {currentAvatar?.image ? (
+                  <img
+                    src={currentAvatar.image}
+                    alt={currentAvatar.name}
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      border: '3px solid #269dd9',
+                      objectFit: 'cover',
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    backgroundColor: '#269dd9',
+                    border: '3px solid #269dd9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    flexShrink: 0,
+                  }}>
+                    {playerAvatar || '😊'}
+                  </div>
+                )}
+                <span style={{
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#2e3538',
+                }}>
+                  {playerName || 'Player'}
+                </span>
               </div>
+
               <button
                 onClick={() => navigate('/stages')}
-                className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+                onMouseEnter={() => setButtonHovered(true)}
+                onMouseLeave={() => setButtonHovered(false)}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#ffffff',
+                  backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 뒤로가기
               </button>
             </div>
-          </div>
-        </header>
 
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-8 text-center shadow-md">
-            <p className="text-xl text-[#269dd9] font-bold mb-4">스테이지 클리어 필요</p>
-            <p className="text-[#2e3538] mb-6">
+            {/* 제목 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              <h1 style={{
+                fontSize: '40px',
+                fontWeight: '700',
+                color: '#269dd9',
+                margin: '0',
+                padding: '0',
+              }}>
+                AI 퀴즈
+              </h1>
+              <p style={{
+                fontSize: '16px',
+                color: '#61686b',
+                margin: '0',
+                padding: '0',
+              }}>
+                한국 문화를 배워봅시다!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <main style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '48px 24px',
+        }}>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '32px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '20px',
+              color: '#269dd9',
+              fontWeight: '700',
+              marginBottom: '16px',
+              margin: '0 0 16px 0',
+            }}>스테이지 클리어 필요</p>
+            <p style={{
+              fontSize: '16px',
+              color: '#2e3538',
+              marginBottom: '24px',
+              margin: '0 0 24px 0',
+            }}>
               퀴즈를 풀려면 먼저 스테이지를 하나 이상 클리어해야 합니다.
             </p>
             <button
               onClick={() => navigate('/stages')}
-              className="py-3 px-8 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e7db0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#269dd9'}
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontSize: '16px',
+                color: '#ffffff',
+                backgroundColor: '#269dd9',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+              }}
             >
               게임 시작하기
             </button>
@@ -172,102 +429,288 @@ const QuizPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#e5f7ff]">
+    <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-[#bfd0d9] sticky top-0 z-30 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              {/* 좌측 프로필 */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
-                {AVATAR_SHOP.find(a => a.id === playerAvatar)?.image ? (
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
-                    <img
-                      src={AVATAR_SHOP.find(a => a.id === playerAvatar)?.image}
-                      alt="프로필"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <span className="text-2xl">{playerAvatar}</span>
-                )}
-                <span className="text-sm font-semibold text-[#269dd9]">{playerName}</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">AI 퀴즈</h1>
-                <p className="text-[#61686b] text-sm">한국 문화를 배워봅시다!</p>
-              </div>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderBottom: '2px solid #bfd0d9',
+        padding: '32px 24px',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '32px',
+        }}>
+          {/* 프로필 + 버튼 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '24px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+            }}>
+              {currentAvatar?.image ? (
+                <img
+                  src={currentAvatar.image}
+                  alt={currentAvatar.name}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    border: '3px solid #269dd9',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#269dd9',
+                  border: '3px solid #269dd9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                  flexShrink: 0,
+                }}>
+                  {playerAvatar || '😊'}
+                </div>
+              )}
+              <span style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#2e3538',
+              }}>
+                {playerName || 'Player'}
+              </span>
             </div>
+
             <button
               onClick={() => navigate('/stages')}
-              className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              onMouseEnter={() => setButtonHovered(true)}
+              onMouseLeave={() => setButtonHovered(false)}
+              style={{
+                padding: '12px 32px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#ffffff',
+                backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                whiteSpace: 'nowrap',
+              }}
             >
               뒤로가기
             </button>
           </div>
+
+          {/* 제목 */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <h1 style={{
+              fontSize: '40px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+              padding: '0',
+            }}>
+              AI 퀴즈
+            </h1>
+            <p style={{
+              fontSize: '16px',
+              color: '#61686b',
+              margin: '0',
+              padding: '0',
+            }}>
+              한국 문화를 배워봅시다!
+            </p>
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg p-8 shadow-lg">
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '32px 24px',
+      }}>
+        <div style={{
+          backgroundColor: '#f5fcff',
+          border: '2px solid #269dd9',
+          borderRadius: '8px',
+          padding: '32px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        }}>
           {/* 진행 상황 */}
-          <div className="flex justify-between items-center mb-6">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+          }}>
             <div>
-              <p className="text-sm text-[#61686b]">객관식 퀴즈</p>
-              <p className="text-[#269dd9] font-bold">{quizCount + 1}번째 문제</p>
+              <p style={{
+                fontSize: '14px',
+                color: '#61686b',
+                margin: '0',
+              }}>객관식 퀴즈</p>
+              <p style={{
+                color: '#269dd9',
+                fontWeight: '700',
+                margin: '8px 0 0 0',
+              }}>{quizCount + 1}번째 문제</p>
             </div>
-            <div className="bg-[#269dd9] text-white px-4 py-2 rounded-lg font-bold">
+            <div style={{
+              backgroundColor: '#269dd9',
+              color: '#ffffff',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontWeight: '700',
+            }}>
               {quizCount}/8 완료
             </div>
           </div>
 
           {/* 진행 바 */}
-          <div className="w-full h-2 bg-[#e0e7eb] rounded-full mb-8 overflow-hidden">
+          <div style={{
+            width: '100%',
+            height: '8px',
+            backgroundColor: '#e0e7eb',
+            borderRadius: '9999px',
+            marginBottom: '32px',
+            overflow: 'hidden',
+          }}>
             <div
-              className="h-full bg-[#269dd9] transition-all duration-500"
-              style={{ width: `${(quizCount / 8) * 100}%` }}
+              style={{
+                height: '100%',
+                backgroundColor: '#269dd9',
+                width: `${(quizCount / 8) * 100}%`,
+                transition: 'width 0.5s ease',
+              }}
             />
           </div>
 
           {/* 퀴즈 상태별 렌더링 */}
           {quizState === 'loading' ? (
-            <div className="py-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#269dd9] mb-4"></div>
-              <p className="text-[#61686b]">퀴즈 준비 중...</p>
+            <div style={{
+              padding: '48px 0',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                display: 'inline-block',
+                animation: 'spin 1s linear infinite',
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                borderTop: '4px solid #269dd9',
+                borderRight: '4px solid #269dd9',
+                borderBottom: '4px solid #269dd9',
+                borderLeft: '4px solid #e0e7eb',
+                marginBottom: '16px',
+              }}></div>
+              <p style={{
+                color: '#61686b',
+                margin: '0',
+              }}>퀴즈 준비 중...</p>
             </div>
           ) : quizState === 'question' && currentQuiz ? (
-            <div className="space-y-6">
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+            }}>
               {/* 질문 */}
-              <div className="bg-white border-l-4 border-[#269dd9] rounded-lg p-6 shadow-sm">
-                <p className="text-sm text-[#61686b] font-semibold mb-2">문제</p>
-                <p className="text-[#269dd9] text-lg font-bold">{currentQuiz.question}</p>
+              <div style={{
+                backgroundColor: '#ffffff',
+                borderLeft: '4px solid #269dd9',
+                borderRadius: '8px',
+                padding: '24px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#61686b',
+                  fontWeight: '600',
+                  margin: '0 0 8px 0',
+                }}>문제</p>
+                <p style={{
+                  color: '#269dd9',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  margin: '0',
+                }}>{currentQuiz.question}</p>
               </div>
 
               {/* 선택지 */}
-              <div className="space-y-3">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}>
                 {currentQuiz.options.map((option, idx) => {
                   const labels = ['A', 'B', 'C', 'D'];
                   return (
                     <button
                       key={idx}
                       onClick={() => handleSelectAnswer(option)}
-                      className={`
-                        w-full p-4 rounded-lg font-semibold text-left transition-all duration-200
-                        flex items-center gap-4 border-2
-                        ${
-                          selectedAnswer === option
-                            ? 'bg-[#269dd9] border-[#269dd9] text-white'
-                            : 'bg-white border-[#bfd0d9] text-[#2e3538] hover:bg-[#e0e7eb] hover:border-[#269dd9]'
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        border: '2px solid',
+                        backgroundColor: selectedAnswer === option ? '#269dd9' : '#ffffff',
+                        borderColor: selectedAnswer === option ? '#269dd9' : '#bfd0d9',
+                        color: selectedAnswer === option ? '#ffffff' : '#2e3538',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedAnswer !== option) {
+                          e.currentTarget.style.backgroundColor = '#e0e7eb';
+                          e.currentTarget.style.borderColor = '#269dd9';
                         }
-                      `}
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedAnswer !== option) {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.borderColor = '#bfd0d9';
+                        }
+                      }}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        selectedAnswer === option ? 'bg-white/20' : 'bg-[#e0e7eb]'
-                      }`}>
-                        <span className="text-sm font-bold">{labels[idx]}</span>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        backgroundColor: selectedAnswer === option ? 'rgba(255,255,255,0.2)' : '#e0e7eb',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                      }}>
+                        {labels[idx]}
                       </div>
-                      <span className="flex-1">{option}</span>
+                      <span style={{ flex: 1 }}>{option}</span>
                     </button>
                   );
                 })}
@@ -277,32 +720,85 @@ const QuizPage: React.FC = () => {
               <button
                 onClick={() => selectedAnswer && handleSelectAnswer(selectedAnswer)}
                 disabled={!selectedAnswer}
-                className="w-full py-3 px-6 rounded-lg font-bold text-white bg-[#33ccb3] hover:bg-[#29a895] disabled:bg-[#e7ecef] disabled:text-[#61686b] transition-all duration-300 disabled:cursor-not-allowed"
+                style={{
+                  width: '100%',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  color: selectedAnswer ? '#ffffff' : '#61686b',
+                  backgroundColor: selectedAnswer ? '#33ccb3' : '#e7ecef',
+                  border: 'none',
+                  cursor: selectedAnswer ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedAnswer) {
+                    e.currentTarget.style.backgroundColor = '#29a895';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedAnswer) {
+                    e.currentTarget.style.backgroundColor = '#33ccb3';
+                  }
+                }}
               >
                 정답 확인
               </button>
             </div>
           ) : quizState === 'checking' || quizState === 'result' ? (
-            <div className="space-y-6 text-center py-6">
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+              textAlign: 'center',
+              padding: '24px 0',
+            }}>
               {/* 결과 표시 */}
-              <div className="space-y-4">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}>
                 <div>
-                  <p
-                    className={`text-3xl font-bold mb-2 ${isCorrect ? 'text-[#33ccb3]' : 'text-[#e61919]'}`}
-                  >
+                  <p style={{
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    margin: '0',
+                    color: isCorrect ? '#33ccb3' : '#e61919',
+                  }}>
                     {isCorrect ? '정답입니다!' : '틀렸습니다!'}
                   </p>
                   {isCorrect && (
-                    <p className="text-lg text-[#269dd9] font-semibold">
+                    <p style={{
+                      fontSize: '18px',
+                      color: '#269dd9',
+                      fontWeight: '600',
+                      margin: '8px 0 0 0',
+                    }}>
                       +10 코인 획득! (총: {coins}코인)
                     </p>
                   )}
                 </div>
 
                 {/* 정답 표시 */}
-                <div className="bg-white border-2 border-[#bfd0d9] rounded-lg p-4 mt-4">
-                  <p className="text-sm text-[#61686b] mb-2">정답:</p>
-                  <p className="text-[#269dd9] font-semibold">{currentQuiz?.correctAnswer}</p>
+                <div style={{
+                  backgroundColor: '#ffffff',
+                  border: '2px solid #bfd0d9',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginTop: '8px',
+                }}>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#61686b',
+                    margin: '0 0 8px 0',
+                  }}>정답:</p>
+                  <p style={{
+                    color: '#269dd9',
+                    fontWeight: '600',
+                    margin: '0',
+                  }}>{currentQuiz?.correctAnswer}</p>
                 </div>
               </div>
 
@@ -310,16 +806,51 @@ const QuizPage: React.FC = () => {
               {quizCount < 8 ? (
                 <button
                   onClick={handleNextQuiz}
-                  className="w-full py-3 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all duration-300"
+                  style={{
+                    width: '100%',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    backgroundColor: '#269dd9',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e7db0'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#269dd9'}
                 >
                   다음 문제
                 </button>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-lg text-[#33ccb3] font-bold">오늘의 8문제를 완료했습니다!</p>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}>
+                  <p style={{
+                    fontSize: '18px',
+                    color: '#33ccb3',
+                    fontWeight: '700',
+                    margin: '0',
+                  }}>오늘의 8문제를 완료했습니다!</p>
                   <button
                     onClick={() => navigate('/stages')}
-                    className="w-full py-3 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all duration-300"
+                    style={{
+                      width: '100%',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      color: '#ffffff',
+                      backgroundColor: '#269dd9',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e7db0'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#269dd9'}
                   >
                     게임으로 돌아가기
                   </button>
@@ -330,15 +861,50 @@ const QuizPage: React.FC = () => {
         </div>
 
         {/* 정보 섹션 */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-4 text-center">
-            <p className="text-sm text-[#61686b]">정답: +10 코인</p>
+        <div style={{
+          marginTop: '32px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '16px',
+        }}>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '0',
+            }}>정답: +10 코인</p>
           </div>
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-4 text-center">
-            <p className="text-sm text-[#61686b]">오답: 재시도</p>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '0',
+            }}>오답: 재시도</p>
           </div>
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-4 text-center">
-            <p className="text-sm text-[#61686b]">보유: {coins} 코인</p>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '16px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '0',
+            }}>보유: {coins} 코인</p>
           </div>
         </div>
       </main>

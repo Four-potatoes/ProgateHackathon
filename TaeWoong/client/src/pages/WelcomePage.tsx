@@ -1,55 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useGame } from '../context/GameContext';
 import { useNavigate } from 'react-router-dom';
+import '../styles/login.css';
 
-type WelcomeMode = 'initial' | 'guest' | 'login' | 'signup';
+// Typewriter effect component
+const Typewriter: React.FC = () => {
+  const texts = [
+    "안녕하세요!",
+    "Welcome!",
+    "Bonjour!",
+    "こんにちは!",
+    "你好!",
+    "Xin chào!"
+  ];
+  const [text, setText] = useState('');
+  const [index, setIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const handleTyping = () => {
+      const currentText = texts[index];
+      if (isDeleting) {
+        setText(currentText.substring(0, text.length - 1));
+      } else {
+        setText(currentText.substring(0, text.length + 1));
+      }
+
+      if (!isDeleting && text === currentText) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && text === '') {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % texts.length);
+      }
+    };
+
+    const typingSpeed = isDeleting ? 100 : 200;
+    const timer = setTimeout(handleTyping, typingSpeed);
+
+    return () => clearTimeout(timer);
+  }, [text, isDeleting, index, texts]);
+
+  return <h1>{text}<span className="cursor">|</span></h1>;
+};
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { loginAsGuest, login, signup } = useAuth();
-  const { setCurrentStage, setUnlockedStages, setCompletedStages } = useGame();
-  
-  const [mode, setMode] = useState<WelcomeMode>('initial');
-  const [playerName, setPlayerName] = useState('');
-  const [username, setUsername] = useState('');
+  const { login, signup } = useAuth();
+
+  const [formType, setFormType] = useState('login'); // 'login' or 'signup'
+
+  // Form states
+  const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  
   const [loading, setLoading] = useState(false);
 
-  const handleGuestStart = async (name: string) => {
-    if (!name.trim()) {
-      alert('닉네임을 입력해주세요.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // 기본 아바타로 게스트 로그인
-      await loginAsGuest(name.trim(), '😊');
-      setCurrentStage(1);
-      setUnlockedStages([1]);
-      setCompletedStages([]);
-      navigate('/stages');
-    } catch (error) {
-      alert('게스트 로그인 실패: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id.trim() || !password.trim()) {
       alert('아이디와 비밀번호를 입력해주세요.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(username.trim(), password.trim());
+      await login(id.trim(), password.trim());
       alert('로그인 성공! 🎉');
-      setCurrentStage(1);
       navigate('/stages');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류';
@@ -60,9 +78,10 @@ const WelcomePage: React.FC = () => {
     }
   };
 
-  const handleSignup = async () => {
-    if (!username.trim() || !email.trim() || !password.trim() || !name.trim()) {
-      alert('아이디, 이메일, 비밀번호, 이름을 모두 입력해주세요.');
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !id.trim() || !email.trim() || !password.trim()) {
+      alert('이름, 아이디, 이메일, 비밀번호를 모두 입력해주세요.');
       return;
     }
 
@@ -71,7 +90,6 @@ const WelcomePage: React.FC = () => {
       return;
     }
 
-    // 이메일 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       alert('올바른 이메일 형식이 아닙니다.');
@@ -80,14 +98,8 @@ const WelcomePage: React.FC = () => {
 
     setLoading(true);
     try {
-      // 기본 아바타로 회원가입
-      await signup(username.trim(), email.trim(), password.trim(), name.trim(), '😊');
-
-      // 회원가입 성공
+      await signup(id.trim(), email.trim(), password.trim(), name.trim(), '😊');
       alert('회원가입이 완료되었습니다! 🎉');
-      setCurrentStage(1);
-      setUnlockedStages([1]);
-      setCompletedStages([]);
       navigate('/stages');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류';
@@ -98,211 +110,70 @@ const WelcomePage: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
-    switch (mode) {
-      case 'initial':
-        return (
-          <div className="space-y-4">
-            <button
-              onClick={() => setMode('guest')}
-              className="w-full bg-[#269dd9] hover:bg-[#1e7db0] text-white font-bold py-4 px-6 rounded-lg shadow-md transition"
-            >
-              게스트로 시작하기
-            </button>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setMode('login')}
-                className="flex-1 bg-white border-2 border-[#269dd9] hover:bg-[#e0e7eb] text-[#269dd9] font-bold py-3 px-4 rounded-lg transition"
-              >
-                로그인
-              </button>
-              <button
-                onClick={() => setMode('signup')}
-                className="flex-1 bg-[#33ccb3] hover:bg-[#29a895] text-white font-bold py-3 px-4 rounded-lg transition"
-              >
-                회원가입
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'guest':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-left text-sm font-semibold text-[#2e3538] mb-2">
-                닉네임 입력
-              </label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="예: 홍길동"
-                maxLength={10}
-                onKeyPress={(e) => e.key === 'Enter' && handleGuestStart(playerName)}
-              />
-            </div>
-
-            <button
-              onClick={() => handleGuestStart(playerName)}
-              disabled={loading}
-              className="w-full bg-[#269dd9] hover:bg-[#1e7db0] disabled:bg-[#e7ecef] disabled:text-[#61686b] text-white font-bold py-4 px-6 rounded-lg shadow-md transition mb-3"
-            >
-              {loading ? '로딩 중...' : '게임 시작 (데이터 저장 안됨)'}
-            </button>
-
-            <button
-              onClick={() => setMode('initial')}
-              className="w-full bg-white border-2 border-[#bfd0d9] hover:border-[#269dd9] text-[#2e3538] font-bold py-3 px-4 rounded-lg transition"
-            >
-              뒤로 가기
-            </button>
-          </div>
-        );
-
-      case 'login':
-        return (
-          <div className="space-y-4">
-            <div>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="아이디"
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              />
-              <label className="block text-xs text-[#61686b] mt-1">아이디</label>
-            </div>
-
-            <div>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="비밀번호"
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              />
-              <label htmlFor="login-password" className="block text-xs text-[#61686b] mt-1">비밀번호</label>
-            </div>
-
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full bg-[#269dd9] hover:bg-[#1e7db0] disabled:bg-[#e7ecef] disabled:text-[#61686b] text-white font-bold py-4 px-6 rounded-lg shadow-md transition mb-3"
-            >
-              {loading ? '로딩 중...' : '로그인'}
-            </button>
-
-            <button
-              onClick={() => setMode('initial')}
-              className="w-full bg-white border-2 border-[#bfd0d9] hover:border-[#269dd9] text-[#2e3538] font-bold py-3 px-4 rounded-lg transition"
-            >
-              뒤로 가기
-            </button>
-          </div>
-        );
-
-      case 'signup':
-        return (
-          <div className="space-y-4">
-            <div>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="아이디 (로그인 시 사용)"
-                maxLength={20}
-                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-              />
-              <label className="block text-xs text-[#61686b] mt-1">아이디</label>
-            </div>
-
-            <div>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="이름 (화면에 표시됨)"
-                maxLength={20}
-                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-              />
-              <label className="block text-xs text-[#61686b] mt-1">이름</label>
-            </div>
-
-            <div>
-              <input
-                id="signup-email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="이메일"
-                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-              />
-              <label htmlFor="signup-email" className="block text-xs text-[#61686b] mt-1">이메일</label>
-            </div>
-
-            <div>
-              <input
-                id="signup-password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-                placeholder="비밀번호 (최소 6자)"
-                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-              />
-              <label htmlFor="signup-password" className="block text-xs text-[#61686b] mt-1">비밀번호</label>
-            </div>
-
-            <button
-              onClick={handleSignup}
-              disabled={loading}
-              className="w-full bg-[#33ccb3] hover:bg-[#29a895] disabled:bg-[#e7ecef] disabled:text-[#61686b] text-white font-bold py-4 px-6 rounded-lg shadow-md transition mb-3"
-            >
-              {loading ? '로딩 중...' : '회원가입'}
-            </button>
-
-            <button
-              onClick={() => setMode('initial')}
-              className="w-full bg-white border-2 border-[#bfd0d9] hover:border-[#269dd9] text-[#2e3538] font-bold py-3 px-4 rounded-lg transition"
-            >
-              뒤로 가기
-            </button>
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#e5f7ff] p-4">
-      <div className="bg-[#f5fcff] p-8 rounded-lg shadow-lg w-full max-w-md border border-[#bfd0d9]">
-        <div className="mb-6 text-center">
-          <h1 className="text-4xl font-bold text-[#269dd9] mb-2">
-            K-Everything Memory Game
-          </h1>
-          <p className="text-[#2e3538]">한국 문화를 배우는 카드 게임</p>
+    <div className="container">
+      <img src="/assets/img/태극.png" alt="" />
+      <img src="/assets/img/건.png" alt="" />
+      <img src="/assets/img/감.png" alt="" />
+      <img src="/assets/img/곤.png" alt="" />
+      <img src="/assets/img/리.png" alt="" />
+
+      <div className="mainContent">
+        <div className="inner">
+          <form id="formBox" onSubmit={formType === 'login' ? handleLogin : handleSignup}>
+            <div className="logo">
+              <img src="/assets/img/logo.png" alt="" />
+            </div>
+
+            <div className="utilTab">
+              <div className="utilTabInner">
+                <button type="button" id="loginTab" className={formType === 'login' ? 'active' : ''} onClick={() => setFormType('login')}>로그인</button>
+                <button type="button" id="signupTab" className={formType === 'signup' ? 'active' : ''} onClick={() => setFormType('signup')}>회원가입</button>
+              </div>
+            </div>
+
+            {/* 로그인 폼 */}
+            <div className={`formInner ${formType === 'login' ? '' : 'hidden'}`} id="loginForm">
+              <div className="inputContainer">
+                <h3>아이디</h3>
+                <input type="text" name="id" placeholder="아이디를 입력해주세요." value={id} onChange={(e) => setId(e.target.value)} />
+              </div>
+              <div className="inputContainer">
+                <h3>비밀번호</h3>
+                <input type="password" name="pw" placeholder="비밀번호를 입력해주세요." value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div className="buttonContainer">
+                <button type="submit" disabled={loading}>{loading ? '로딩 중...' : '로그인'}</button>
+              </div>
+            </div>
+
+            {/* 회원가입 폼 */}
+            <div className={`formInner ${formType === 'signup' ? '' : 'hidden'}`} id="signupForm">
+              <div className="inputContainer">
+                <h3>이름</h3>
+                <input type="text" name="name" placeholder="이름을 입력해주세요." value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="inputContainer">
+                <h3>아이디</h3>
+                <input type="text" name="signupId" placeholder="아이디를 입력해주세요." value={id} onChange={(e) => setId(e.target.value)} />
+              </div>
+              <div className="inputContainer">
+                <h3>이메일</h3>
+                <input type="email" name="signupEmail" placeholder="이메일을 입력해주세요." value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="inputContainer">
+                <h3>비밀번호</h3>
+                <input type="password" name="signupPw" placeholder="비밀번호를 입력해주세요." value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div className="buttonContainer">
+                <button type="submit" disabled={loading}>{loading ? '로딩 중...' : '회원가입'}</button>
+              </div>
+            </div>
+          </form>
         </div>
 
-        {renderContent()}
-
-        <div className="mt-6 pt-6 border-t border-[#bfd0d9] text-center">
-          <p className="text-sm font-semibold text-[#2e3538] mb-3">게임 방법</p>
-          <div className="text-xs text-[#61686b] space-y-1">
-            <p>• 같은 카드를 찾아 맞추세요</p>
-            <p>• 스테이지를 클리어하면 다음 단계 잠금 해제</p>
-            <p>• 회원가입하면 데이터가 저장됩니다</p>
-          </div>
+        <div className="rightSide">
+          <Typewriter />
         </div>
       </div>
     </div>

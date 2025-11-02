@@ -13,11 +13,13 @@ import ShopPage from './pages/ShopPage';
 import RankingPage from './pages/RankingPage';
 import AchievementPage from './pages/AchievementPage';
 import CultureWikiPage from './pages/CultureWikiPage';
+import MainPage from './pages/MainPage';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<WelcomePage />} />
+      <Route path="/" element={<MainPage />} />
+      <Route path="/welcome" element={<WelcomePage />} />
       <Route path="/stages" element={<StagesPage />} />
       <Route path="/game" element={<GamePage />} />
       <Route path="/collection" element={<CollectionPage />} />

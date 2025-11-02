@@ -9,8 +9,10 @@ const ShopPage: React.FC = () => {
   const { playerAvatar, setPlayerAvatar, coins: authCoins } = useAuth();
   const { coins, setCoins, purchasedAvatars, addPurchasedAvatar } = useGame();
   const [message, setMessage] = useState('');
+  const [buttonHovered, setButtonHovered] = useState(false);
 
   const displayCoins = coins || authCoins;
+  const currentAvatar = AVATAR_SHOP.find(a => a.id === playerAvatar);
 
   const handlePurchase = (avatarId: string) => {
     const avatar = AVATAR_SHOP.find((a) => a.id === avatarId);
@@ -41,72 +43,172 @@ const ShopPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#e5f7ff]">
+    <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-[#bfd0d9] sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              {/* 좌측 프로필 */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
-                {AVATAR_SHOP.find(a => a.id === playerAvatar)?.image ? (
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
-                    <img
-                      src={AVATAR_SHOP.find(a => a.id === playerAvatar)?.image}
-                      alt="프로필"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <span className="text-2xl">{playerAvatar}</span>
-                )}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">프로필 상점</h1>
-                <p className="text-[#61686b] text-sm">코인을 모아 새로운 프로필 아바타를 구매하세요!</p>
-              </div>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderBottom: '2px solid #bfd0d9',
+        padding: '32px 24px',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '32px',
+        }}>
+          {/* 프로필 + 버튼 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '24px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+            }}>
+              {currentAvatar?.image ? (
+                <img
+                  src={currentAvatar.image}
+                  alt={currentAvatar.name}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    border: '3px solid #269dd9',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#269dd9',
+                  border: '3px solid #269dd9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                  flexShrink: 0,
+                }}>
+                  {playerAvatar || '😊'}
+                </div>
+              )}
+              <span style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#2e3538',
+              }}>
+                {displayCoins}
+              </span>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#f5fcff] border-2 border-[#269dd9] rounded-lg">
-                <span className="font-semibold text-[#269dd9]">코인:</span>
-                <span className="font-bold text-[#269dd9]">{displayCoins}</span>
-              </div>
-              <button
-                onClick={() => navigate('/stages')}
-                className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
-              >
-                스테이지 선택
-              </button>
-            </div>
+
+            <button
+              onClick={() => navigate('/stages')}
+              onMouseEnter={() => setButtonHovered(true)}
+              onMouseLeave={() => setButtonHovered(false)}
+              style={{
+                padding: '12px 32px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#ffffff',
+                backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              스테이지 선택
+            </button>
+          </div>
+
+          {/* 제목 */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <h1 style={{
+              fontSize: '40px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+              padding: '0',
+            }}>
+              프로필 상점
+            </h1>
+            <p style={{
+              fontSize: '16px',
+              color: '#61686b',
+              margin: '0',
+              padding: '0',
+            }}>
+              코인을 모아 새로운 프로필 아바타를 구매하세요!
+            </p>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* 메시지 */}
       {message && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-[#33ccb3] text-white px-6 py-3 rounded-lg shadow-lg font-semibold">
+        <div style={{
+          position: 'fixed',
+          top: '100px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 50,
+        }}>
+          <div style={{
+            backgroundColor: '#33ccb3',
+            color: '#ffffff',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            fontWeight: '600',
+          }}>
             {message}
           </div>
         </div>
       )}
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '48px 24px',
+      }}>
         {/* 카테고리 */}
         {['free', 'basic', 'premium', 'legendary'].map((category) => {
           const categoryItems = AVATAR_SHOP.filter((a) => a.category === category);
           const categoryNames: Record<string, string> = {
             free: '무료',
-            basic: '기본',
-            premium: '프리미엄',
-            legendary: '레전더리'
+            basic: '애니메이션',
+            premium: '케이팝 데몬 헌터스',
+            legendary: 'Progate & Entbe'
           };
 
           return (
-            <div key={category} className="mb-12">
-              <h2 className="text-3xl font-bold text-[#269dd9] mb-6">{categoryNames[category]}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6">
+            <div key={category} style={{ marginBottom: '48px' }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#269dd9',
+                margin: '0 0 24px 0',
+              }}>
+                {categoryNames[category]}
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                gap: '24px',
+              }}>
                 {categoryItems.map((avatar) => {
                   const isPurchased = purchasedAvatars.has(avatar.id);
                   const isSelected = playerAvatar === avatar.id;
@@ -115,31 +217,87 @@ const ShopPage: React.FC = () => {
                   return (
                     <div
                       key={avatar.id}
-                      className={`
-                        relative bg-[#f5fcff] rounded-lg shadow-md p-4 text-center border-2 transition-all
-                        ${isSelected ? 'border-[#33ccb3]' : isPurchased ? 'border-[#269dd9]' : 'border-[#bfd0d9]'}
-                      `}
+                      style={{
+                        position: 'relative',
+                        backgroundColor: '#f5fcff',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        padding: '16px',
+                        textAlign: 'center',
+                        border: '2px solid',
+                        borderColor: isSelected ? '#33ccb3' : isPurchased ? '#269dd9' : '#bfd0d9',
+                        transition: 'all 0.3s ease',
+                      }}
                     >
                       {avatar.image ? (
-                        <div className="w-20 h-20 mx-auto mb-2 rounded-full overflow-hidden border-2 border-[#bfd0d9]">
+                        <div style={{
+                          width: '80px',
+                          height: '80px',
+                          margin: '0 auto 12px auto',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '2px solid #bfd0d9',
+                        }}>
                           <img
                             src={avatar.image}
                             alt={avatar.name}
-                            className="w-full h-full object-cover"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
                           />
                         </div>
                       ) : (
-                        <div className="text-6xl mb-2">{avatar.id}</div>
+                        <div style={{
+                          fontSize: '48px',
+                          marginBottom: '8px',
+                        }}>
+                          {avatar.id}
+                        </div>
                       )}
-                      <h3 className="font-bold text-sm text-[#269dd9] mb-1">{avatar.name}</h3>
-                      <p className="text-xs text-[#61686b] mb-3">{avatar.price} 코인</p>
+                      <h3 style={{
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        color: '#269dd9',
+                        margin: '0 0 4px 0',
+                      }}>
+                        {avatar.name}
+                      </h3>
+                      <p style={{
+                        fontSize: '12px',
+                        color: '#61686b',
+                        margin: '0 0 12px 0',
+                      }}>
+                        {avatar.price} 코인
+                      </p>
 
                       {isSelected ? (
-                        <div className="text-xs font-semibold text-[#33ccb3] py-2">사용 중</div>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#33ccb3',
+                          padding: '8px',
+                        }}>
+                          사용 중
+                        </div>
                       ) : isPurchased ? (
                         <button
                           onClick={() => handleSelectAvatar(avatar.id)}
-                          className="w-full py-2 px-3 rounded bg-[#269dd9] hover:bg-[#1e7db0] text-white text-xs font-semibold transition"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: '#269dd9',
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e7db0'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#269dd9'}
                         >
                           착용하기
                         </button>
@@ -147,16 +305,40 @@ const ShopPage: React.FC = () => {
                         <button
                           onClick={() => handlePurchase(avatar.id)}
                           disabled={!canAfford && avatar.price > 0}
-                          className={`
-                            w-full py-2 px-3 rounded text-xs font-semibold transition
-                            ${
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            border: 'none',
+                            cursor: canAfford || avatar.price === 0 ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s ease',
+                            backgroundColor:
                               avatar.price === 0
-                                ? 'bg-[#33ccb3] hover:bg-[#29a895] text-white'
+                                ? '#33ccb3'
                                 : canAfford
-                                ? 'bg-[#269dd9] hover:bg-[#1e7db0] text-white'
-                                : 'bg-[#e7ecef] text-[#61686b] cursor-not-allowed'
+                                ? '#269dd9'
+                                : '#e7ecef',
+                            color:
+                              avatar.price === 0 || canAfford
+                                ? '#ffffff'
+                                : '#61686b',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (canAfford || avatar.price === 0) {
+                              e.currentTarget.style.backgroundColor =
+                                avatar.price === 0 ? '#29a895' : '#1e7db0';
                             }
-                          `}
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              avatar.price === 0
+                                ? '#33ccb3'
+                                : canAfford
+                                ? '#269dd9'
+                                : '#e7ecef';
+                          }}
                         >
                           {avatar.price === 0 ? '받기' : '구매하기'}
                         </button>

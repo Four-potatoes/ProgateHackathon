@@ -17,6 +17,7 @@ const CultureWikiPage: React.FC = () => {
   const { playerAvatar, playerName } = useAuth();
   const [selectedItem, setSelectedItem] = useState<string>('김장');
   const [searchQuery, setSearchQuery] = useState('');
+  const [buttonHovered, setButtonHovered] = useState(false);
 
   const cultureWiki: Record<string, CultureContent> = {
     '김장': {
@@ -32,10 +33,10 @@ const CultureWikiPage: React.FC = () => {
       ],
       relatedItems: ['비빔밥', '김치', '한식 문화']
     },
-    '석굼암': {
-      title: '석굼암 (Seokguram)',
+    '석굴암': {
+      title: '석굴암 (Seokguram)',
       subtitle: '불국사의 숨겨진 보석',
-      description: '석굼암은 8세기 신라의 건축 기술을 대표하는 불교 건축물로, 불국사 위쪽 산 정상에 위치한 석조 궁전입니다. 팔만대장경과 같은 시대에 지어졌습니다.',
+      description: '석굴암은 8세기 신라의 건축 기술을 대표하는 불교 건축물로, 불국사 위쪽 산 정상에 위치한 석조 궁전입니다. 팔만대장경과 같은 시대에 지어졌습니다.',
       history: '751년 신라의 재상 김대성이 건설을 시작하여 774년에 완성되었습니다. 신라의 과학 기술과 예술의 최고봉을 보여주는 유산입니다.',
       interesting: [
         '원형 계획의 건물로 한국 고대 건축의 우수성을 보여줍니다',
@@ -108,118 +109,350 @@ const CultureWikiPage: React.FC = () => {
   const currentAvatar = AVATAR_SHOP.find(a => a.id === playerAvatar);
 
   return (
-    <div className="min-h-screen bg-[#e5f7ff]">
+    <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-[#bfd0d9] shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-4">
-              {/* Profile Display */}
-              <div className="flex items-center gap-3">
-                {currentAvatar?.image ? (
-                  <img
-                    src={currentAvatar.image}
-                    alt={currentAvatar.name}
-                    className="w-12 h-12 rounded-full border-2 border-[#269dd9]"
-                  />
-                ) : (
-                  <div className="w-12 h-12 flex items-center justify-center bg-[#269dd9] rounded-full text-2xl border-2 border-[#269dd9]">
-                    {playerAvatar || '😊'}
-                  </div>
-                )}
-                <span className="font-bold text-[#2e3538]">{playerName || 'Player'}</span>
+      <header style={{
+        backgroundColor: '#ffffff',
+        borderBottom: '2px solid #bfd0d9',
+        padding: '24px 32px',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}>
+        {/* 프로필 | 제목 | 버튼 */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: '100%',
+          height: '60px',
+        }}>
+          {/* 왼쪽 - 프로필 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            minWidth: '200px',
+          }}>
+            {currentAvatar?.image ? (
+              <img
+                src={currentAvatar.image}
+                alt={currentAvatar.name}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  border: '3px solid #269dd9',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                backgroundColor: '#269dd9',
+                border: '3px solid #269dd9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+              }}>
+                {playerAvatar || '😊'}
               </div>
-              <div className="border-l border-[#bfd0d9] h-8 mx-2"></div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">한국 문화 백과사전</h1>
-                <p className="text-[#61686b] mt-1 text-sm">한국 문화에 대해 깊이 있게 배워보세요</p>
-              </div>
-            </div>
+            )}
+            <span style={{
+              fontWeight: '700',
+              color: '#2e3538',
+              fontSize: '18px',
+            }}>
+              {playerName || 'Player'}
+            </span>
+          </div>
+
+          {/* 중앙 - 제목 */}
+          <div style={{
+            textAlign: 'center',
+            flex: 1,
+          }}>
+            <h1 style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+              padding: '0',
+            }}>
+              한국 문화 백과사전
+            </h1>
+          </div>
+
+          {/* 오른쪽 - 버튼 */}
+          <div style={{
+            minWidth: '200px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}>
             <button
               onClick={() => navigate('/stages')}
-              className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              onMouseEnter={() => setButtonHovered(true)}
+              onMouseLeave={() => setButtonHovered(false)}
+              style={{
+                padding: '10px 28px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#ffffff',
+                backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                whiteSpace: 'nowrap',
+              }}
             >
               돌아가기
             </button>
           </div>
-
-          {/* 검색 */}
-          <div className="relative">
-            <label htmlFor="wiki-search" className="sr-only">문화 항목 검색</label>
-            <input
-              type="text"
-              id="wiki-search"
-              name="wiki-search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="검색..."
-              className="w-full px-4 py-3 bg-white border-2 border-[#bfd0d9] rounded-lg text-[#2e3538] placeholder-[#61686b] focus:border-[#269dd9] focus:ring-2 focus:ring-[#269dd9]/20 transition-all"
-            />
-          </div>
         </div>
       </header>
 
+      {/* 검색 섹션 */}
+      <div style={{
+        backgroundColor: '#e5f7ff',
+        padding: '16px 32px',
+        borderBottom: '1px solid #bfd0d9',
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+        }}>
+          <input
+            type="text"
+            id="wiki-search"
+            name="wiki-search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="검색..."
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: '#ffffff',
+              border: '2px solid #bfd0d9',
+              borderRadius: '8px',
+              fontSize: '16px',
+              color: '#2e3538',
+              boxSizing: 'border-box',
+              transition: 'border-color 0.2s ease',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#269dd9'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#bfd0d9'}
+          />
+        </div>
+      </div>
+
       {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '48px 16px',
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 2fr',
+          gap: '32px',
+        }}>
           {/* 목록 */}
-          <div className="lg:col-span-1">
-            <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-6 sticky top-24">
-              <h3 className="text-xl font-bold text-[#269dd9] mb-4">항목 목록</h3>
-              <div className="space-y-2">
+          <div>
+            <div style={{
+              backgroundColor: '#f5fcff',
+              border: '2px solid #bfd0d9',
+              borderRadius: '12px',
+              padding: '24px',
+              position: 'sticky',
+              top: '24px',
+            }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#269dd9',
+                marginBottom: '16px',
+                margin: '0 0 16px 0',
+              }}>
+                항목 목록
+              </h3>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
                 {filteredItems.length > 0 ? (
                   filteredItems.map((item) => (
                     <button
                       key={item}
                       onClick={() => setSelectedItem(item)}
-                      className={`
-                        w-full text-left px-4 py-3 rounded-lg transition-all border-2
-                        ${
-                          selectedItem === item
-                            ? 'bg-[#269dd9] text-white font-bold border-[#269dd9]'
-                            : 'bg-white text-[#2e3538] hover:bg-[#e5f7ff] border-[#bfd0d9]'
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        border: '2px solid',
+                        backgroundColor: selectedItem === item ? '#269dd9' : '#ffffff',
+                        borderColor: selectedItem === item ? '#269dd9' : '#bfd0d9',
+                        color: selectedItem === item ? '#ffffff' : '#2e3538',
+                        fontWeight: selectedItem === item ? '700' : '600',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedItem !== item) {
+                          e.currentTarget.style.backgroundColor = '#e5f7ff';
                         }
-                      `}
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedItem !== item) {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                        }
+                      }}
                     >
                       {cultureWiki[item].title}
                     </button>
                   ))
                 ) : (
-                  <p className="text-[#61686b] text-sm">검색 결과가 없습니다</p>
+                  <p style={{
+                    color: '#61686b',
+                    fontSize: '14px',
+                    margin: '0',
+                  }}>
+                    검색 결과가 없습니다
+                  </p>
                 )}
               </div>
             </div>
           </div>
 
           {/* 상세 내용 */}
-          <div className="lg:col-span-2">
+          <div>
             {content ? (
-              <div className="space-y-6">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '24px',
+              }}>
                 {/* 제목 */}
-                <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-8">
-                  <h2 className="text-4xl font-bold text-[#269dd9] mb-2">{content.title}</h2>
-                  <p className="text-lg text-[#61686b]">{content.subtitle}</p>
+                <div style={{
+                  backgroundColor: '#f5fcff',
+                  border: '2px solid #bfd0d9',
+                  borderRadius: '12px',
+                  padding: '32px',
+                }}>
+                  <h2 style={{
+                    fontSize: '36px',
+                    fontWeight: '700',
+                    color: '#269dd9',
+                    marginBottom: '8px',
+                    margin: '0 0 8px 0',
+                  }}>
+                    {content.title}
+                  </h2>
+                  <p style={{
+                    fontSize: '18px',
+                    color: '#61686b',
+                    margin: '0',
+                  }}>
+                    {content.subtitle}
+                  </p>
                 </div>
 
                 {/* 설명 */}
-                <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-6">
-                  <h3 className="text-xl font-bold text-[#269dd9] mb-3">설명</h3>
-                  <p className="text-[#2e3538] leading-relaxed">{content.description}</p>
+                <div style={{
+                  backgroundColor: '#f5fcff',
+                  border: '2px solid #bfd0d9',
+                  borderRadius: '12px',
+                  padding: '24px',
+                }}>
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#269dd9',
+                    marginBottom: '12px',
+                    margin: '0 0 12px 0',
+                  }}>
+                    설명
+                  </h3>
+                  <p style={{
+                    color: '#2e3538',
+                    lineHeight: '1.6',
+                    margin: '0',
+                  }}>
+                    {content.description}
+                  </p>
                 </div>
 
                 {/* 역사 */}
-                <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-6">
-                  <h3 className="text-xl font-bold text-[#269dd9] mb-3">역사</h3>
-                  <p className="text-[#2e3538] leading-relaxed">{content.history}</p>
+                <div style={{
+                  backgroundColor: '#f5fcff',
+                  border: '2px solid #bfd0d9',
+                  borderRadius: '12px',
+                  padding: '24px',
+                }}>
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#269dd9',
+                    marginBottom: '12px',
+                    margin: '0 0 12px 0',
+                  }}>
+                    역사
+                  </h3>
+                  <p style={{
+                    color: '#2e3538',
+                    lineHeight: '1.6',
+                    margin: '0',
+                  }}>
+                    {content.history}
+                  </p>
                 </div>
 
                 {/* 흥미로운 사실 */}
-                <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-6">
-                  <h3 className="text-xl font-bold text-[#269dd9] mb-4">흥미로운 사실</h3>
-                  <ul className="space-y-3">
+                <div style={{
+                  backgroundColor: '#f5fcff',
+                  border: '2px solid #bfd0d9',
+                  borderRadius: '12px',
+                  padding: '24px',
+                }}>
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#269dd9',
+                    marginBottom: '16px',
+                    margin: '0 0 16px 0',
+                  }}>
+                    흥미로운 사실
+                  </h3>
+                  <ul style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    margin: '0',
+                    paddingLeft: '0',
+                  }}>
                     {content.interesting.map((fact, idx) => (
-                      <li key={idx} className="flex gap-3 text-[#2e3538]">
-                        <span className="text-[#33ccb3] font-bold">•</span>
+                      <li
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          gap: '12px',
+                          color: '#2e3538',
+                          fontSize: '14px',
+                          listStyle: 'none',
+                        }}
+                      >
+                        <span style={{
+                          color: '#33ccb3',
+                          fontWeight: '700',
+                          flexShrink: 0,
+                        }}>
+                          •
+                        </span>
                         <span>{fact}</span>
                       </li>
                     ))}
@@ -228,13 +461,38 @@ const CultureWikiPage: React.FC = () => {
 
                 {/* 관련 항목 */}
                 {content.relatedItems.length > 0 && (
-                  <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-6">
-                    <h3 className="text-xl font-bold text-[#269dd9] mb-4">관련 항목</h3>
-                    <div className="flex flex-wrap gap-2">
+                  <div style={{
+                    backgroundColor: '#f5fcff',
+                    border: '2px solid #bfd0d9',
+                    borderRadius: '12px',
+                    padding: '24px',
+                  }}>
+                    <h3 style={{
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#269dd9',
+                      marginBottom: '16px',
+                      margin: '0 0 16px 0',
+                    }}>
+                      관련 항목
+                    </h3>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}>
                       {content.relatedItems.map((item, idx) => (
                         <span
                           key={idx}
-                          className="px-4 py-2 bg-white border-2 border-[#bfd0d9] rounded-full text-[#269dd9] text-sm font-medium"
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#ffffff',
+                            border: '2px solid #bfd0d9',
+                            borderRadius: '9999px',
+                            color: '#269dd9',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                          }}
                         >
                           {item}
                         </span>
@@ -244,8 +502,20 @@ const CultureWikiPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-xl p-12 text-center">
-                <p className="text-xl text-[#61686b] mt-4">항목을 선택하세요</p>
+              <div style={{
+                backgroundColor: '#f5fcff',
+                border: '2px solid #bfd0d9',
+                borderRadius: '12px',
+                padding: '48px 24px',
+                textAlign: 'center',
+              }}>
+                <p style={{
+                  fontSize: '18px',
+                  color: '#61686b',
+                  margin: '0',
+                }}>
+                  항목을 선택하세요
+                </p>
               </div>
             )}
           </div>

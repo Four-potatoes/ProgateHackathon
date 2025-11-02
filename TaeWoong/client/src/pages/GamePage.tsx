@@ -152,7 +152,7 @@ const GamePage: React.FC = () => {
     <div className="min-h-screen bg-[#e5f7ff]">
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#bfd0d9] shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-3">
               <button

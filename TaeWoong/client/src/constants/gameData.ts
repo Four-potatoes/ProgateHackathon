@@ -128,10 +128,14 @@ export const AVATAR_SHOP: Avatar[] = [
   { id: 'abby', name: '애비', price: 50, category: 'premium', image: '/img/avatars/DH_Abby.jpg' },
   { id: 'rumi', name: '루미', price: 50, category: 'premium', image: '/img/avatars/DH_Rumi.jpg' },
   { id: 'zoey', name: '조이', price: 50, category: 'premium', image: '/img/avatars/DH_Zoey.jpg' },
+  { id: 'mystery', name: '미스터리', price: 50, category: 'premium', image: '/img/avatars/DH_Mystery.jpg' },
+  { id: 'romance', name: '로맨스', price: 50, category: 'premium', image: '/img/avatars/DH_Romance.jpg' },
 
   // Legendary
-  { id: 'mystery', name: '미스터리', price: 100, category: 'legendary', image: '/img/avatars/DH_Mystery.jpg' },
-  { id: 'romance', name: '로맨스', price: 100, category: 'legendary', image: '/img/avatars/DH_Romance.jpg' }
+  { id: 'purple', name: 'purple', price: 100, category: 'legendary', image: '/img/avatars/스크린샷 2025-11-02 114232.png' },
+  { id: 'blue', name: 'blue', price: 100, category: 'legendary', image: '/img/avatars/스크린샷 2025-11-02 114238.png' },
+  { id: 'Entbe', name: '앙트비', price: 100, category: 'legendary', image: '/img/avatars/스크린샷 2025-11-02 114250.png' },
+  { id: 'progate', name: 'Progate', price: 100, category: 'legendary', image: '/img/avatars/스크린샷 2025-11-02 114309.png' }
 ];
 
 export const PROFILE_AVATARS = ['😊', '😎', '🥳', '🤓', '😇', '🤗', '🥰', '😁', '🙂', '😄', '😃', '😀', '🤩', '😍', '🥸', '😏'];

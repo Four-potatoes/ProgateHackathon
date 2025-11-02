@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ const AchievementPage: React.FC = () => {
   const navigate = useNavigate();
   const { completedStages, coins } = useGame();
   const { playerAvatar, playerName } = useAuth();
+  const [buttonHovered, setButtonHovered] = useState(false);
 
   // 배지 정의
   const badges: Badge[] = [
@@ -140,136 +141,377 @@ const AchievementPage: React.FC = () => {
   const currentAvatar = AVATAR_SHOP.find(a => a.id === playerAvatar);
 
   return (
-    <div className="min-h-screen bg-[#e5f7ff]">
+    <div style={{ minHeight: '100vh', backgroundColor: '#e5f7ff' }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-[#bfd0d9] shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              {/* Profile Display */}
-              <div className="flex items-center gap-3">
-                {currentAvatar?.image ? (
-                  <img
-                    src={currentAvatar.image}
-                    alt={currentAvatar.name}
-                    className="w-12 h-12 rounded-full border-2 border-[#269dd9]"
-                  />
-                ) : (
-                  <div className="w-12 h-12 flex items-center justify-center bg-[#269dd9] rounded-full text-2xl border-2 border-[#269dd9]">
-                    {playerAvatar || '😊'}
-                  </div>
-                )}
-                <span className="font-bold text-[#2e3538]">{playerName || 'Player'}</span>
-              </div>
-              <div className="border-l border-[#bfd0d9] h-8 mx-2"></div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#269dd9]">배지 & 업적</h1>
-                <p className="text-[#61686b] mt-1 text-sm">게임을 플레이하고 배지를 수집하세요!</p>
-              </div>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderBottom: '2px solid #bfd0d9',
+        padding: '32px 24px',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '32px',
+        }}>
+          {/* 프로필 + 버튼 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '24px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+            }}>
+              {currentAvatar?.image ? (
+                <img
+                  src={currentAvatar.image}
+                  alt={currentAvatar.name}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    border: '3px solid #269dd9',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#269dd9',
+                  border: '3px solid #269dd9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                  flexShrink: 0,
+                }}>
+                  {playerAvatar || '😊'}
+                </div>
+              )}
+              <span style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#2e3538',
+              }}>
+                {playerName || 'Player'}
+              </span>
             </div>
+
             <button
               onClick={() => navigate('/stages')}
-              className="py-2 px-6 rounded-lg font-bold text-white bg-[#269dd9] hover:bg-[#1e7db0] transition-all"
+              onMouseEnter={() => setButtonHovered(true)}
+              onMouseLeave={() => setButtonHovered(false)}
+              style={{
+                padding: '12px 32px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#ffffff',
+                backgroundColor: buttonHovered ? '#1e7db0' : '#269dd9',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                whiteSpace: 'nowrap',
+              }}
             >
               스테이지로
             </button>
           </div>
+
+          {/* 제목 */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <h1 style={{
+              fontSize: '40px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+              padding: '0',
+            }}>
+              배지 & 업적
+            </h1>
+            <p style={{
+              fontSize: '16px',
+              color: '#61686b',
+              margin: '0',
+              padding: '0',
+            }}>
+              게임을 플레이하고 배지를 수집하세요!
+            </p>
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* 통계 */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6 text-center">
-            <p className="text-3xl font-bold text-[#269dd9]">{unlockedCount}</p>
-            <p className="text-sm text-[#61686b] mt-2">배지 수집</p>
+      <section style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '32px 24px',
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '16px',
+          marginBottom: '32px',
+        }}>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '24px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+            }}>
+              {unlockedCount}
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '8px 0 0 0',
+            }}>
+              배지 수집
+            </p>
           </div>
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6 text-center">
-            <p className="text-3xl font-bold text-[#269dd9]">{totalBadges}</p>
-            <p className="text-sm text-[#61686b] mt-2">전체 배지</p>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '24px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+            }}>
+              {totalBadges}
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '8px 0 0 0',
+            }}>
+              전체 배지
+            </p>
           </div>
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6 text-center">
-            <p className="text-3xl font-bold text-[#33ccb3]">
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '24px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#33ccb3',
+              margin: '0',
+            }}>
               {Math.round((unlockedCount / totalBadges) * 100)}%
             </p>
-            <p className="text-sm text-[#61686b] mt-2">진행률</p>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '8px 0 0 0',
+            }}>
+              진행률
+            </p>
           </div>
-          <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6 text-center">
-            <p className="text-3xl font-bold text-[#269dd9]">{completedStages.length}</p>
-            <p className="text-sm text-[#61686b] mt-2">클리어한 스테이지</p>
+          <div style={{
+            backgroundColor: '#f5fcff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '8px',
+            padding: '24px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#269dd9',
+              margin: '0',
+            }}>
+              {completedStages.length}
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: '#61686b',
+              margin: '8px 0 0 0',
+            }}>
+              클리어한 스테이지
+            </p>
           </div>
         </div>
 
         {/* 진행 바 */}
-        <div className="mb-8 bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6">
-          <div className="flex justify-between items-center mb-3">
-            <p className="text-[#2e3538] font-bold">배지 수집 진행도</p>
-            <p className="text-[#61686b] text-sm">
+        <div style={{
+          backgroundColor: '#f5fcff',
+          border: '2px solid #bfd0d9',
+          borderRadius: '8px',
+          padding: '24px',
+          marginBottom: '32px',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px',
+          }}>
+            <p style={{
+              color: '#2e3538',
+              fontWeight: '700',
+              margin: '0',
+            }}>
+              배지 수집 진행도
+            </p>
+            <p style={{
+              color: '#61686b',
+              fontSize: '14px',
+              margin: '0',
+            }}>
               {unlockedCount} / {totalBadges}
             </p>
           </div>
-          <div className="w-full h-4 bg-white border-2 border-[#bfd0d9] rounded-full overflow-hidden">
+          <div style={{
+            width: '100%',
+            height: '16px',
+            backgroundColor: '#ffffff',
+            border: '2px solid #bfd0d9',
+            borderRadius: '9999px',
+            overflow: 'hidden',
+          }}>
             <div
-              className="h-full bg-[#33ccb3] transition-all duration-500"
-              style={{ width: `${(unlockedCount / totalBadges) * 100}%` }}
+              style={{
+                height: '100%',
+                backgroundColor: '#33ccb3',
+                width: `${(unlockedCount / totalBadges) * 100}%`,
+                transition: 'width 0.5s ease',
+              }}
             />
           </div>
         </div>
       </section>
 
       {/* 배지 그리드 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '0 24px 48px 24px',
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '24px',
+        }}>
           {badges.map((badge) => (
             <div
               key={badge.id}
-              className={`
-                relative rounded-xl p-6 transition-all duration-300 transform hover:scale-105 border-2
-                ${
-                  badge.unlocked
-                    ? `${badge.color} border-[#269dd9] shadow-lg text-white`
-                    : 'bg-white border-[#bfd0d9] opacity-50'
-                }
-              `}
+              style={{
+                position: 'relative',
+                borderRadius: '12px',
+                padding: '24px',
+                transition: 'all 0.3s ease',
+                border: '2px solid',
+                backgroundColor: badge.unlocked ? badge.color : '#ffffff',
+                borderColor: badge.unlocked ? '#269dd9' : '#bfd0d9',
+                opacity: badge.unlocked ? 1 : 0.5,
+                color: badge.unlocked ? '#ffffff' : '#61686b',
+                cursor: 'pointer',
+              }}
             >
               {/* 배지 상태 표시 */}
-              <div className="absolute top-4 right-4">
-                {badge.unlocked ? (
-                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 bg-[#33ccb3] rounded-full"></div>
-                  </div>
-                ) : (
-                  <div className="w-6 h-6 bg-[#bfd0d9] rounded-full flex items-center justify-center">
-                    <div className="w-3 h-3 bg-white rounded-full"></div>
-                  </div>
-                )}
+              <div style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: badge.unlocked ? '#ffffff' : '#bfd0d9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <div
+                  style={{
+                    width: badge.unlocked ? '16px' : '12px',
+                    height: badge.unlocked ? '16px' : '12px',
+                    borderRadius: '50%',
+                    backgroundColor: badge.unlocked ? '#33ccb3' : '#ffffff',
+                  }}
+                />
               </div>
 
               {/* 배지 내용 */}
-              <div className="mb-4">
-                <h3 className={`text-xl font-bold ${badge.unlocked ? 'text-white' : 'text-[#61686b]'}`}>
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  margin: '0 0 8px 0',
+                  color: badge.unlocked ? '#ffffff' : '#61686b',
+                }}>
                   {badge.name}
                 </h3>
-                <p className={`text-sm ${badge.unlocked ? 'text-white/90' : 'text-[#61686b]'} mt-2`}>
+                <p style={{
+                  fontSize: '14px',
+                  margin: '8px 0 0 0',
+                  color: badge.unlocked ? 'rgba(255,255,255,0.9)' : '#61686b',
+                }}>
                   {badge.description}
                 </p>
               </div>
 
               {/* 조건 */}
-              <div className={`text-xs font-semibold ${badge.unlocked ? 'text-white/80' : 'text-[#61686b]'}`}>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                color: badge.unlocked ? 'rgba(255,255,255,0.8)' : '#61686b',
+              }}>
                 {badge.condition}
               </div>
 
               {/* 진행도 바 */}
               {badge.progress !== undefined && badge.maxProgress !== undefined && !badge.unlocked && (
-                <div className="mt-3">
-                  <div className="w-full h-2 bg-[#bfd0d9] rounded-full overflow-hidden">
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#bfd0d9',
+                    borderRadius: '9999px',
+                    overflow: 'hidden',
+                  }}>
                     <div
-                      className="h-full bg-[#33ccb3] transition-all duration-300"
-                      style={{ width: `${(badge.progress / badge.maxProgress) * 100}%` }}
+                      style={{
+                        height: '100%',
+                        backgroundColor: '#33ccb3',
+                        width: `${(badge.progress / badge.maxProgress) * 100}%`,
+                        transition: 'width 0.3s ease',
+                      }}
                     />
                   </div>
-                  <p className={`text-xs mt-1 ${badge.unlocked ? 'text-white' : 'text-[#61686b]'}`}>
+                  <p style={{
+                    fontSize: '12px',
+                    marginTop: '4px',
+                    color: '#61686b',
+                    margin: '4px 0 0 0',
+                  }}>
                     {badge.progress} / {badge.maxProgress}
                   </p>
                 </div>
@@ -277,7 +519,11 @@ const AchievementPage: React.FC = () => {
 
               {/* 언락 날짜 */}
               {badge.unlocked && badge.unlockedDate && (
-                <div className="mt-3 text-xs text-white/80">
+                <div style={{
+                  marginTop: '12px',
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.8)',
+                }}>
                   {badge.unlockedDate}에 해제됨
                 </div>
               )}
@@ -287,14 +533,35 @@ const AchievementPage: React.FC = () => {
       </main>
 
       {/* 팁 */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-        <div className="bg-[#f5fcff] border-2 border-[#bfd0d9] rounded-lg p-6">
-          <h3 className="text-[#269dd9] font-bold mb-3">배지를 더 많이 수집하는 팁</h3>
-          <ul className="text-sm text-[#2e3538] space-y-2">
-            <li>• 모든 스테이지를 클리어해서 "스테이지 마스터" 배지를 얻으세요</li>
-            <li>• AI 퀴즈를 풀어서 코인을 모아 배지를 해제하세요</li>
-            <li>• 매일 게임을 플레이해서 "연속 플레이어" 배지를 목표로 하세요</li>
-            <li>• 빠르게 게임을 완료해서 "스피드 러너" 배지를 노려보세요</li>
+      <section style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '0 24px 32px 24px',
+      }}>
+        <div style={{
+          backgroundColor: '#f5fcff',
+          border: '2px solid #bfd0d9',
+          borderRadius: '8px',
+          padding: '24px',
+        }}>
+          <h3 style={{
+            color: '#269dd9',
+            fontWeight: '700',
+            marginBottom: '12px',
+            margin: '0 0 12px 0',
+          }}>
+            배지를 더 많이 수집하는 팁
+          </h3>
+          <ul style={{
+            fontSize: '14px',
+            color: '#2e3538',
+            margin: '0',
+            paddingLeft: '20px',
+          }}>
+            <li>모든 스테이지를 클리어해서 "스테이지 마스터" 배지를 얻으세요</li>
+            <li>AI 퀴즈를 풀어서 코인을 모아 배지를 해제하세요</li>
+            <li>매일 게임을 플레이해서 "연속 플레이어" 배지를 목표로 하세요</li>
+            <li>빠르게 게임을 완료해서 "스피드 러너" 배지를 노려보세요</li>
           </ul>
         </div>
       </section>
