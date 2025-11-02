@@ -296,28 +296,49 @@ footer {
     justify-content: space-between;
     align-items: center;
 }
-.footerInner > .logo {
+.footerLeft {
+    width: 30%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.footerLeft > .logo {
     width: 200px;
     height: 80px;
 }
-.copyright {
-    width: 50%;
-    height: 100%;
-    align-content: center;
-    text-align: center;
-    color: #fff;
+.footerline {
+    width: 2px;
+    height: 60%;
+    background: #fff;
 }
-.githubId {
-    /* width: 30%; */
+.footerRight {
+    width: 60%;
     height: 100%;
-    align-content: center;
-    text-align: end;
-    color: #fff;
-    text-decoration: underline;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     gap: 10px;
+    align-items: center;
+    color: #fff;
+}
+.footerRightTop {
+    width: 50%;
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    gap: 10px;
+}
+.footerRightTop > .githubId {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
+}
+.githubId > li {
+    text-align: start;
 }
 @media (max-width: 480px) {
     :root {
