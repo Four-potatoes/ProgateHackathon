@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User } from '../types';
 import { PROFILE_AVATARS } from '../constants/gameData';
 import { authService } from '../services/authService';
@@ -34,12 +34,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [coins, setCoins] = useState(0);
   const [isGuest, setIsGuest] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 세션 복원
   const restoreSession = async () => {
-    // 비동기 작업을 useEffect에서 처리하도록 변경
+    if (isInitialized) return;
+
     const token = localStorage.getItem('auth_token');
-    
+
     if (token) {
       try {
         const userData = await authService.getCurrentUser();
@@ -49,11 +51,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoggedIn(true);
         setIsGuest(false);
 
-        const progress = localStorage.getItem(`game_progress_${userData.id}`);
+        // localStorage에서 게임 진행 상황 불러오기
+        const progress = localStorage.getItem('game_progress');
         if (progress) {
           const data = JSON.parse(progress);
           setCoins(data.coins || 0);
         }
+
+        console.log('사용자 세션 복원 완료:', userData.name);
       } catch (error) {
         console.error('사용자 정보 로드 실패:', error);
         localStorage.removeItem('auth_token');
@@ -68,12 +73,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setCoins(data.coins || 0);
           setIsGuest(true);
           setIsLoggedIn(true);
+          console.log('게스트 세션 복원 완료:', data.name);
         } catch (error) {
           console.error('게스트 데이터 복원 실패:', error);
         }
       }
     }
+
+    setIsInitialized(true);
   };
+
+  // 컴포넌트 마운트 시 세션 자동 복원
+  useEffect(() => {
+    restoreSession();
+  }, []);
 
   // 게스트 로그인
   const loginAsGuest = async (name: string, avatar: string) => {
@@ -173,13 +186,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // 아바타 변경
-  const handleSetPlayerAvatar = (avatar: string) => {
+  const handleSetPlayerAvatar = async (avatar: string) => {
     setPlayerAvatar(avatar);
-    
-    // 데이터베이스에 저장
+
+    // 인증된 사용자: 백엔드에 저장
     if (currentUser && !isGuest) {
-      localStorage.setItem(`player_avatar_${currentUser.id}`, avatar);
+      try {
+        // 사용자 프로필 업데이트 (백엔드 API 호출)
+        await authService.updateProfile({ avatar });
+
+        // currentUser 업데이트
+        setCurrentUser({ ...currentUser, avatar });
+
+        console.log('아바타 백엔드에 저장 완료:', avatar);
+      } catch (error) {
+        console.error('아바타 저장 실패:', error);
+      }
     } else if (isGuest) {
+      // 게스트: localStorage에만 저장
       const guestData = localStorage.getItem('guest_session');
       if (guestData) {
         const data = JSON.parse(guestData);
