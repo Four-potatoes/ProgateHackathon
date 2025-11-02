@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []
