@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
-import { PROFILE_AVATARS } from '../constants/gameData';
 import { useNavigate } from 'react-router-dom';
 
 type WelcomeMode = 'initial' | 'guest' | 'login' | 'signup';
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { loginAsGuest, login, signup, playerAvatar } = useAuth();
+  const { loginAsGuest, login, signup } = useAuth();
   const { setCurrentStage, setUnlockedStages, setCompletedStages } = useGame();
   
   const [mode, setMode] = useState<WelcomeMode>('initial');
   const [playerName, setPlayerName] = useState('');
+  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState(playerAvatar);
   const [loading, setLoading] = useState(false);
 
   const handleGuestStart = async (name: string) => {
@@ -23,10 +23,11 @@ const WelcomePage: React.FC = () => {
       alert('닉네임을 입력해주세요.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      await loginAsGuest(name.trim(), selectedAvatar);
+      // 기본 아바타로 게스트 로그인
+      await loginAsGuest(name.trim(), '😊');
       setCurrentStage(1);
       setUnlockedStages([1]);
       setCompletedStages([]);
@@ -39,14 +40,14 @@ const WelcomePage: React.FC = () => {
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      alert('이메일과 비밀번호를 입력해주세요.');
+    if (!username.trim() || !password.trim()) {
+      alert('아이디와 비밀번호를 입력해주세요.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(email.trim(), password.trim());
+      await login(username.trim(), password.trim());
       alert('로그인 성공! 🎉');
       setCurrentStage(1);
       navigate('/stages');
@@ -60,8 +61,8 @@ const WelcomePage: React.FC = () => {
   };
 
   const handleSignup = async () => {
-    if (!email.trim() || !password.trim()) {
-      alert('이메일과 비밀번호를 입력해주세요.');
+    if (!username.trim() || !email.trim() || !password.trim() || !name.trim()) {
+      alert('아이디, 이메일, 비밀번호, 이름을 모두 입력해주세요.');
       return;
     }
 
@@ -79,9 +80,8 @@ const WelcomePage: React.FC = () => {
 
     setLoading(true);
     try {
-      // name을 email에서 추출 (@ 앞부분)
-      const nameFromEmail = email.split('@')[0];
-      await signup(email.trim(), password.trim(), nameFromEmail, selectedAvatar);
+      // 기본 아바타로 회원가입
+      await signup(username.trim(), email.trim(), password.trim(), name.trim(), '😊');
 
       // 회원가입 성공
       alert('회원가입이 완료되었습니다! 🎉');
@@ -97,24 +97,6 @@ const WelcomePage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const avatarGrid = (
-    <div className="grid grid-cols-8 gap-2 p-3 bg-[#e0e7eb] rounded-lg">
-      {PROFILE_AVATARS.map((avatar) => (
-        <button
-          key={avatar}
-          onClick={() => setSelectedAvatar(avatar)}
-          className={`w-12 h-12 text-2xl rounded-full border-2 transition-all duration-200 ${
-            selectedAvatar === avatar
-              ? 'border-[#269dd9] scale-110 shadow-md'
-              : 'border-[#bfd0d9] hover:border-[#269dd9]'
-          }`}
-        >
-          {avatar}
-        </button>
-      ))}
-    </div>
-  );
 
   const renderContent = () => {
     switch (mode) {
@@ -150,13 +132,6 @@ const WelcomePage: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-left text-sm font-semibold text-[#2e3538] mb-2">
-                프로필 아바타 선택
-              </label>
-              {avatarGrid}
-            </div>
-
-            <div>
-              <label className="block text-left text-sm font-semibold text-[#2e3538] mb-2">
                 닉네임 입력
               </label>
               <input
@@ -190,26 +165,31 @@ const WelcomePage: React.FC = () => {
       case 'login':
         return (
           <div className="space-y-4">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-              placeholder="이메일"
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-            />
+            <div>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="아이디"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              />
+              <label className="block text-xs text-[#61686b] mt-1">아이디</label>
+            </div>
 
-            <input
-              id="login-password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-              placeholder="비밀번호"
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-            />
-            <label htmlFor="login-password" className="text-xs text-[#61686b]">비밀번호</label>
+            <div>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="비밀번호"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              />
+              <label htmlFor="login-password" className="block text-xs text-[#61686b] mt-1">비밀번호</label>
+            </div>
 
             <button
               onClick={handleLogin}
@@ -232,35 +212,58 @@ const WelcomePage: React.FC = () => {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-left text-sm font-semibold text-[#2e3538] mb-2">
-                프로필 아바타 선택
-              </label>
-              {avatarGrid}
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="아이디 (로그인 시 사용)"
+                maxLength={20}
+                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
+              />
+              <label className="block text-xs text-[#61686b] mt-1">아이디</label>
             </div>
 
-            <input
-              id="signup-email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-              placeholder="이메일"
-              onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-            />
-            <label htmlFor="signup-email" className="text-xs text-[#61686b]">이메일</label>
+            <div>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="이름 (화면에 표시됨)"
+                maxLength={20}
+                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
+              />
+              <label className="block text-xs text-[#61686b] mt-1">이름</label>
+            </div>
 
-            <input
-              id="signup-password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
-              placeholder="비밀번호 (최소 6자)"
-              onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
-            />
-            <label htmlFor="signup-password" className="text-xs text-[#61686b]">비밀번호</label>
+            <div>
+              <input
+                id="signup-email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="이메일"
+                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
+              />
+              <label htmlFor="signup-email" className="block text-xs text-[#61686b] mt-1">이메일</label>
+            </div>
+
+            <div>
+              <input
+                id="signup-password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3 border-2 border-[#bfd0d9] rounded-lg focus:border-[#269dd9] focus:outline-none transition"
+                placeholder="비밀번호 (최소 6자)"
+                onKeyPress={(e) => e.key === 'Enter' && handleSignup()}
+              />
+              <label htmlFor="signup-password" className="block text-xs text-[#61686b] mt-1">비밀번호</label>
+            </div>
 
             <button
               onClick={handleSignup}

@@ -17,7 +17,9 @@ const ShopPage: React.FC = () => {
     if (!avatar) return;
 
     if (displayCoins >= avatar.price && !purchasedAvatars.has(avatar.id)) {
+      // 코인 차감
       setCoins(displayCoins - avatar.price);
+      // 아바타 추가 (GameContext에서 자동으로 백엔드 저장)
       addPurchasedAvatar(avatar.id);
       setMessage(`${avatar.name} 아바타를 구매했습니다!`);
       setTimeout(() => setMessage(''), 3000);

@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { GameCard } from '../types';
 import { STAGES } from '../constants/gameData';
+import { gameService } from '../services/gameService';
+import { useAuth } from './AuthContext';
 
 interface GameContextType {
   currentStage: number;
@@ -9,7 +11,7 @@ interface GameContextType {
   setUnlockedStages: (stages: number[]) => void;
   completedStages: number[];
   setCompletedStages: (stages: number[]) => void;
-  
+
   // Game state
   cards: GameCard[];
   flipped: number[];
@@ -17,12 +19,12 @@ interface GameContextType {
   moves: number;
   isWon: boolean;
   canClick: boolean;
-  
+
   // Game actions
   initializeGame: (stageId: number) => void;
   handleCardClick: (cardId: number) => void;
   resetGame: () => void;
-  
+
   // Profile
   coins: number;
   setCoins: (coins: number) => void;
@@ -31,6 +33,10 @@ interface GameContextType {
   addPurchasedAvatar: (avatar: string) => void;
   viewedCollections: Set<string>;
   addViewedCollection: (collectionId: string) => void;
+
+  // Backend sync
+  saveProgressToBackend: () => Promise<void>;
+  loadProgressFromBackend: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -44,21 +50,131 @@ const shuffleArray = (array: unknown[]) => {
   return arr;
 };
 
+// localStorage 키
+const STORAGE_KEY = 'game_progress';
+
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentStage, setCurrentStage] = useState(1);
-  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
-  const [completedStages, setCompletedStages] = useState<number[]>([]);
-  
+  const { isGuest, currentUser, isLoggedIn, playerAvatar } = useAuth();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // localStorage에서 초기 상태 불러오기
+  const getInitialState = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        return {
+          currentStage: data.currentStage || 1,
+          unlockedStages: data.unlockedStages || [1],
+          completedStages: data.completedStages || [],
+          coins: data.coins || 0,
+          purchasedAvatars: new Set<string>(data.purchasedAvatars || ['😊'])
+        };
+      }
+    } catch (error) {
+      console.error('Failed to load from localStorage:', error);
+    }
+    return {
+      currentStage: 1,
+      unlockedStages: [1],
+      completedStages: [],
+      coins: 0,
+      purchasedAvatars: new Set<string>(['😊'])
+    };
+  };
+
+  const initialState = getInitialState();
+
+  const [currentStage, setCurrentStage] = useState(initialState.currentStage);
+  const [unlockedStages, setUnlockedStages] = useState<number[]>(initialState.unlockedStages);
+  const [completedStages, setCompletedStages] = useState<number[]>(initialState.completedStages);
+
   const [cards, setCards] = useState<GameCard[]>([]);
   const [flipped, setFlipped] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [isWon, setIsWon] = useState(false);
   const [canClick, setCanClick] = useState(true);
-  
-  const [coins, setCoins] = useState(0);
-  const [purchasedAvatars, setPurchasedAvatars] = useState<Set<string>>(new Set(['😊']));
+
+  const [coins, setCoins] = useState(initialState.coins);
+  const [purchasedAvatars, setPurchasedAvatars] = useState<Set<string>>(initialState.purchasedAvatars);
   const [viewedCollections, setViewedCollections] = useState<Set<string>>(new Set());
+
+  // 백엔드에서 진행 상황 불러오기
+  const loadProgressFromBackend = useCallback(async () => {
+    if (isGuest || !isLoggedIn) return;
+
+    try {
+      const progress = await gameService.loadProgress();
+      if (progress) {
+        setCurrentStage(progress.currentStage || 1);
+        setUnlockedStages(progress.unlockedStages || [1]);
+        setCompletedStages(progress.completedStages || []);
+        setCoins(progress.coins || 0);
+        setPurchasedAvatars(new Set(progress.purchasedAvatars || ['😊']));
+      }
+    } catch (error) {
+      console.error('Failed to load progress from backend:', error);
+    }
+  }, [isGuest, isLoggedIn]);
+
+  // 백엔드에 진행 상황 저장하기
+  const saveProgressToBackend = useCallback(async () => {
+    if (isGuest || !isLoggedIn) return;
+
+    try {
+      await gameService.saveProgress({
+        currentStage,
+        unlockedStages,
+        completedStages,
+        playerAvatar,
+        coins,
+        purchasedAvatars: Array.from(purchasedAvatars)
+      });
+    } catch (error) {
+      console.error('Failed to save progress to backend:', error);
+    }
+  }, [isGuest, isLoggedIn, currentStage, unlockedStages, completedStages, playerAvatar, coins, purchasedAvatars]);
+
+  // 로그인 시 백엔드에서 진행 상황 불러오기
+  useEffect(() => {
+    if (isLoggedIn && !isGuest && !isInitialized) {
+      loadProgressFromBackend().then(() => setIsInitialized(true));
+    } else if (!isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [isLoggedIn, isGuest, isInitialized, loadProgressFromBackend]);
+
+  // 상태 변경 시 localStorage에 자동 저장 (모든 사용자)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const progressData = {
+      currentStage,
+      unlockedStages,
+      completedStages,
+      coins,
+      purchasedAvatars: Array.from(purchasedAvatars)
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progressData));
+      console.log('Progress saved to localStorage:', progressData);
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
+    }
+  }, [isInitialized, currentStage, unlockedStages, completedStages, coins, purchasedAvatars]);
+
+  // 상태 변경 시 백엔드에 자동 저장 (인증된 사용자만)
+  useEffect(() => {
+    if (!isInitialized || isGuest || !isLoggedIn) return;
+
+    const timeoutId = setTimeout(() => {
+      saveProgressToBackend();
+    }, 1000); // 1초 디바운스
+
+    return () => clearTimeout(timeoutId);
+  }, [isInitialized, isGuest, isLoggedIn, currentStage, unlockedStages, completedStages, coins, purchasedAvatars, saveProgressToBackend]);
 
   const initializeGame = useCallback((stageId: number) => {
     // 현재 스테이지의 아이템 가져오기
@@ -98,30 +214,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (card1 && card2 && card1.pairId === card2.pairId) {
             setMatched(prev => {
               const newMatched = [...prev, firstId, secondId];
-              
+
               if (newMatched.length === cards.length) {
                 setIsWon(true);
-                
+
                 // 스테이지 완료 처리
-                setCompletedStages(prev => {
-                  if (!prev.includes(currentStage)) {
-                    return [...prev, currentStage];
-                  }
-                  return prev;
-                });
-                
+                setCompletedStages(prev =>
+                  !prev.includes(currentStage) ? [...prev, currentStage] : prev
+                );
+
                 // 다음 스테이지 잠금 해제
-                setUnlockedStages(prev => {
-                  if (currentStage < 3 && !prev.includes(currentStage + 1)) {
-                    return [...prev, currentStage + 1];
-                  }
-                  return prev;
-                });
+                setUnlockedStages(prev =>
+                  currentStage < 3 && !prev.includes(currentStage + 1)
+                    ? [...prev, currentStage + 1]
+                    : prev
+                );
               }
-              
+
               return newMatched;
             });
-            
+
             setFlipped([]);
             setCanClick(true);
           } else {
@@ -148,7 +260,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addCoins = useCallback((amount: number) => {
-    setCoins(prev => prev + amount);
+    setCoins((prev: number) => prev + amount);
   }, []);
 
   const addPurchasedAvatar = useCallback((avatar: string) => {
@@ -181,7 +293,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     purchasedAvatars,
     addPurchasedAvatar,
     viewedCollections,
-    addViewedCollection
+    addViewedCollection,
+    saveProgressToBackend,
+    loadProgressFromBackend
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

@@ -262,9 +262,13 @@ const GamePage: React.FC = () => {
                     }}
                   >
                     <img
-                      src={`/img/${stage?.folder}/${card.img}`}
+                      src={`/img/${stage?.folder}/${encodeURIComponent(card.img)}`}
                       alt={card.title}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error(`이미지 로드 실패: /img/${stage?.folder}/${card.img}`);
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   </div>
                 </div>

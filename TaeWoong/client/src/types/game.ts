@@ -34,8 +34,9 @@ export interface GameProgress {
   completedStages: number[];
   currentStage: number;
   coins: number;
-  viewedCollections: string[];
+  viewedCollections?: string[];
   purchasedAvatars: string[];
+  playerAvatar?: string;
 }
 
 export interface RankingEntry {
