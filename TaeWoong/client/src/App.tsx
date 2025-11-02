@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { GameProvider } from './context/GameContext';
 
 // Pages
@@ -15,13 +15,6 @@ import AchievementPage from './pages/AchievementPage';
 import CultureWikiPage from './pages/CultureWikiPage';
 
 const AppRoutes: React.FC = () => {
-  const { restoreSession } = useAuth();
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    restoreSession();
-  }, []);
-
   return (
     <Routes>
       <Route path="/" element={<WelcomePage />} />

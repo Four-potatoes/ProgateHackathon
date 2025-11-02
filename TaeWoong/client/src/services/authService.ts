@@ -7,99 +7,6 @@ export interface GuestLoginData {
   avatar: string;
 }
 
-export const authService = {
-  // 게스트 로그인
-  guestLogin: async (data: GuestLoginData): Promise<AuthResponse> => {
-    try {
-      const response = await api.post('/auth/guest-login', data);
-      return response.data as AuthResponse;
-    } catch (error) {
-      console.error('게스트 로그인 에러:', error);
-      throw error;
-    }
-  },
-
-  // 일반 로그인
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    try {
-      // 백엔드 시도
-      try {
-        const response = await api.post('/auth/login', credentials);
-        const authData = response.data as AuthResponse;
-        if (authData.token) {
-          localStorage.setItem('auth_token', authData.token);
-        }
-        return authData;
-      } catch (backendError) {
-        console.warn('백엔드 로그인 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
-        return mockLogin(credentials);
-      }
-    } catch (error) {
-      console.error('로그인 에러:', error);
-      throw error;
-    }
-  },
-
-  // 회원가입
-  signup: async (credentials: SignupCredentials): Promise<AuthResponse> => {
-    try {
-      // 백엔드 시도
-      try {
-        const response = await api.post('/auth/signup', credentials);
-        const authData = response.data as AuthResponse;
-        if (authData.token) {
-          localStorage.setItem('auth_token', authData.token);
-        }
-        return authData;
-      } catch (backendError) {
-        console.warn('백엔드 회원가입 실패, 로컬 모드로 전환:', backendError);
-        // 백엔드 실패 시 로컬 모드로 진행
-        return mockSignup(credentials);
-      }
-    } catch (error) {
-      console.error('회원가입 에러:', error);
-      throw error;
-    }
-  },
-
-  // 로그아웃
-  logout: async (): Promise<void> => {
-    try {
-      await api.post('/auth/logout', {});
-    } catch (error) {
-      console.warn('로그아웃 API 요청 실패:', error);
-    } finally {
-      localStorage.removeItem('auth_token');
-    }
-  },
-
-  // 현재 사용자 정보 조회
-  getCurrentUser: async (): Promise<User> => {
-    try {
-      const response = await api.get('/auth/me');
-      return response.data as User;
-    } catch (error) {
-      console.error('사용자 정보 조회 실패:', error);
-      throw error;
-    }
-  },
-
-  // 토큰 유효성 확인
-  verifyToken: async (): Promise<boolean> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return false;
-
-      await api.get('/auth/verify');
-      return true;
-    } catch (error) {
-      localStorage.removeItem('auth_token');
-      return false;
-    }
-  }
-};
-
 // ===================================
 // Mock 함수들 (백엔드 없을 때 사용)
 // ===================================
@@ -214,4 +121,196 @@ const mockSignup = async (credentials: SignupCredentials): Promise<AuthResponse>
       });
     }, 500);
   });
+};
+
+const mockGetCurrentUser = async (): Promise<User> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const token = localStorage.getItem('auth_token');
+      if (!token || !token.startsWith('mock_jwt_')) {
+        reject(new Error('인증되지 않은 사용자입니다.'));
+        return;
+      }
+
+      // 토큰에서 사용자 ID 추출
+      const userId = token.split('_')[2];
+      const users = getAllMockUsers();
+      const user = users.find((u: any) => u.id === userId);
+
+      if (!user) {
+        reject(new Error('사용자를 찾을 수 없습니다.'));
+        return;
+      }
+
+      resolve({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar
+      });
+    }, 100);
+  });
+};
+
+const mockUpdateProfile = async (data: { avatar?: string; name?: string }): Promise<User> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const token = localStorage.getItem('auth_token');
+      if (!token || !token.startsWith('mock_jwt_')) {
+        reject(new Error('인증되지 않은 사용자입니다.'));
+        return;
+      }
+
+      // 토큰에서 사용자 ID 추출
+      const userId = token.split('_')[2];
+      const users = getAllMockUsers();
+      const user = users.find((u: any) => u.id === userId);
+
+      if (!user) {
+        reject(new Error('사용자를 찾을 수 없습니다.'));
+        return;
+      }
+
+      // 프로필 업데이트
+      if (data.avatar !== undefined) {
+        user.avatar = data.avatar;
+      }
+      if (data.name !== undefined) {
+        user.name = data.name;
+      }
+
+      saveMockUser(user);
+
+      resolve({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar
+      });
+    }, 300);
+  });
+};
+
+// ===================================
+// AuthService 정의
+// ===================================
+
+export const authService = {
+  // 게스트 로그인
+  guestLogin: async (data: GuestLoginData): Promise<AuthResponse> => {
+    try {
+      const response = await api.post('/auth/guest-login', data);
+      return response.data as AuthResponse;
+    } catch (error) {
+      console.error('게스트 로그인 에러:', error);
+      throw error;
+    }
+  },
+
+  // 일반 로그인
+  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    try {
+      // 백엔드 시도
+      try {
+        const response = await api.post('/auth/login', credentials);
+        const authData = response.data as AuthResponse;
+        if (authData.token) {
+          localStorage.setItem('auth_token', authData.token);
+        }
+        return authData;
+      } catch (backendError) {
+        console.warn('백엔드 로그인 실패, 로컬 모드로 전환:', backendError);
+        // 백엔드 실패 시 로컬 모드로 진행
+        return mockLogin(credentials);
+      }
+    } catch (error) {
+      console.error('로그인 에러:', error);
+      throw error;
+    }
+  },
+
+  // 회원가입
+  signup: async (credentials: SignupCredentials): Promise<AuthResponse> => {
+    try {
+      // 백엔드 시도
+      try {
+        const response = await api.post('/auth/signup', credentials);
+        const authData = response.data as AuthResponse;
+        if (authData.token) {
+          localStorage.setItem('auth_token', authData.token);
+        }
+        return authData;
+      } catch (backendError) {
+        console.warn('백엔드 회원가입 실패, 로컬 모드로 전환:', backendError);
+        // 백엔드 실패 시 로컬 모드로 진행
+        return mockSignup(credentials);
+      }
+    } catch (error) {
+      console.error('회원가입 에러:', error);
+      throw error;
+    }
+  },
+
+  // 로그아웃
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout', {});
+    } catch (error) {
+      console.warn('로그아웃 API 요청 실패:', error);
+    } finally {
+      localStorage.removeItem('auth_token');
+    }
+  },
+
+  // 현재 사용자 정보 조회
+  getCurrentUser: async (): Promise<User> => {
+    try {
+      // 백엔드 시도
+      try {
+        const response = await api.get('/auth/me');
+        return response.data as User;
+      } catch (backendError) {
+        console.warn('백엔드 사용자 정보 조회 실패, 로컬 모드로 전환:', backendError);
+        // 백엔드 실패 시 로컬 모드로 진행
+        return mockGetCurrentUser();
+      }
+    } catch (error) {
+      console.error('사용자 정보 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  // 토큰 유효성 확인
+  verifyToken: async (): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return false;
+
+      await api.get('/auth/verify');
+      return true;
+    } catch (error) {
+      localStorage.removeItem('auth_token');
+      return false;
+    }
+  },
+
+  // 프로필 업데이트
+  updateProfile: async (data: { avatar?: string; name?: string }): Promise<User> => {
+    try {
+      // 백엔드 시도
+      try {
+        const response = await api.put('/auth/profile', data);
+        return response.data as User;
+      } catch (backendError) {
+        console.warn('백엔드 프로필 업데이트 실패, 로컬 모드로 전환:', backendError);
+        // 백엔드 실패 시 로컬 모드로 진행
+        return mockUpdateProfile(data);
+      }
+    } catch (error) {
+      console.error('프로필 업데이트 에러:', error);
+      throw error;
+    }
+  }
 };
